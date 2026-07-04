@@ -82,6 +82,7 @@ export default function InvoiceView({
 
   // Finalizer Dialog states
   const [isFinalizerOpen, setIsFinalizerOpen] = useState(false);
+  const [isDiscountModalOpen, setIsDiscountModalOpen] = useState(false);
   const [finalDiscount, setFinalDiscount] = useState(0);
   const [finalDiscountPercent, setFinalDiscountPercent] = useState(0);
   const [finalTax, setFinalTax] = useState(0);
@@ -774,8 +775,13 @@ export default function InvoiceView({
 
             {/* Config metadata metrics displayed cleanly */}
             <div className="grid grid-cols-4 gap-2 bg-slate-50 p-2.5 rounded-xl border border-slate-100 text-center text-[10px] font-black text-slate-500">
-              <div>
-                الخصم: <span className="text-rose-600 font-bold font-mono">{formatCurrency(finalDiscount)}</span>
+              <div
+                onClick={() => setIsDiscountModalOpen(true)}
+                className="cursor-pointer hover:bg-rose-50 p-1 rounded-lg transition-colors flex items-center justify-center gap-1 border border-transparent hover:border-rose-150"
+                title="تعديل الخصم"
+              >
+                <span>الخصم:</span>
+                <span className="text-rose-600 font-bold font-mono">{formatCurrency(finalDiscount)}</span>
               </div>
               <div>
                 الضريبة (%{finalTaxPercent}): <span className="text-amber-600 font-bold font-mono">{formatCurrency(finalTax)}</span>
@@ -929,8 +935,15 @@ export default function InvoiceView({
             </div>
 
             {/* Discount (الخصم) */}
-            <div className="p-4 bg-rose-50">
-              <span className="block text-[10px] font-black text-rose-800 mb-1">الخصم</span>
+            <div
+              onClick={() => setIsDiscountModalOpen(true)}
+              className="p-4 bg-rose-50 hover:bg-rose-100/70 transition-colors cursor-pointer select-none"
+              title="اضغط هنا لتعديل الخصم الممنوح"
+            >
+              <span className="block text-[10px] font-black text-rose-800 mb-1 flex items-center justify-center gap-1">
+                <Percent className="h-3 w-3 text-rose-600" />
+                <span>الخصم</span>
+              </span>
               <span className="text-base font-black text-rose-900 font-sans leading-none">
                 {formatCurrency(finalDiscount)}
               </span>
@@ -1362,6 +1375,119 @@ export default function InvoiceView({
                 className="flex-1 py-3 bg-teal-600 hover:bg-teal-700 text-white rounded-2xl text-xs font-black shadow-md cursor-pointer transition-all text-center"
               >
                 حفظ وترحيل الفاتورة
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ==================== MODAL 3: DEDICATED DISCOUNT MODAL ==================== */}
+      {isDiscountModalOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-rose-50 animate-in zoom-in-95 duration-200" dir="rtl">
+            {/* Header */}
+            <div className="text-center pb-3 border-b border-slate-100 mb-4">
+              <div className="w-12 h-12 bg-rose-50 rounded-full flex items-center justify-center mx-auto mb-2 text-rose-600">
+                <Percent className="h-6 w-6" />
+              </div>
+              <h3 className="text-sm font-black text-slate-800">
+                تحديد قيمة الخصم الممنوح للفاتورة
+              </h3>
+              <p className="text-[10px] text-slate-400 font-bold mt-1">
+                المجموع الحالي للفاتورة: {formatCurrency(subtotal)}
+              </p>
+            </div>
+
+            {/* Content inputs */}
+            <div className="space-y-4 text-right">
+              <div className="p-3 bg-rose-50/40 border border-rose-100 rounded-2xl space-y-2">
+                <span className="block text-[11px] font-black text-rose-800">إدخال قيمة الخصم:</span>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="relative">
+                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 font-bold">خصم %</span>
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      placeholder="0"
+                      value={finalDiscountPercent || ''}
+                      onChange={(e) => handleDiscountPercentChange(parseFloat(e.target.value) || 0)}
+                      className="w-full pl-11 pr-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-mono text-center font-bold focus:outline-none focus:border-rose-500 transition-colors"
+                      autoFocus
+                    />
+                  </div>
+                  <div className="relative">
+                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 font-bold">مبلغ</span>
+                    <input
+                      type="number"
+                      min="0"
+                      max={subtotal}
+                      placeholder="0.00"
+                      value={finalDiscount || ''}
+                      onChange={(e) => handleDiscountChange(parseFloat(e.target.value) || 0)}
+                      className="w-full pl-11 pr-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-mono text-center font-bold focus:outline-none focus:border-rose-500 transition-colors"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Quick Preset Buttons */}
+              <div className="space-y-2">
+                <span className="block text-[10px] font-black text-slate-400">خصومات سريعة:</span>
+                <div className="grid grid-cols-4 gap-1.5 text-center">
+                  {[5, 10, 15, 20].map((pct) => (
+                    <button
+                      key={`pct-${pct}`}
+                      type="button"
+                      onClick={() => handleDiscountPercentChange(pct)}
+                      className="py-1.5 bg-slate-50 hover:bg-rose-50 hover:text-rose-700 rounded-xl text-[11px] font-black text-slate-600 border border-slate-200/65 transition-all cursor-pointer"
+                    >
+                      %{pct}
+                    </button>
+                  ))}
+                </div>
+                <div className="grid grid-cols-4 gap-1.5 text-center font-sans">
+                  {[5, 10, 50, 100].map((amt) => (
+                    <button
+                      key={`amt-${amt}`}
+                      type="button"
+                      onClick={() => handleDiscountChange(amt)}
+                      className="py-1.5 bg-slate-50 hover:bg-rose-50 hover:text-rose-700 rounded-xl text-[11px] font-black text-slate-600 border border-slate-200/65 transition-all cursor-pointer font-sans"
+                    >
+                      {amt}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Total display after discount */}
+              <div className="p-3 bg-teal-50/50 border border-teal-100 rounded-2xl flex justify-between items-center">
+                <span className="text-[11px] font-black text-slate-500">المجموع بعد الخصم:</span>
+                <span className="text-sm font-black text-teal-800 font-mono">
+                  {formatCurrency(Math.max(0, subtotal - finalDiscount))}
+                </span>
+              </div>
+            </div>
+
+            {/* Buttons */}
+            <div className="flex gap-2.5 pt-4 border-t border-slate-100 mt-4">
+              <button
+                type="button"
+                onClick={() => {
+                  setFinalDiscount(0);
+                  setFinalDiscountPercent(0);
+                }}
+                className="py-2.5 px-3 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-2xl text-[11px] font-black cursor-pointer transition-all text-center flex-1"
+              >
+                إلغاء الخصم (0)
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsDiscountModalOpen(false)}
+                className="py-2.5 px-5 bg-teal-600 hover:bg-teal-700 text-white rounded-2xl text-[11px] font-black shadow-md cursor-pointer transition-all text-center flex-1"
+              >
+                تطبيق وحفظ
               </button>
             </div>
           </div>
