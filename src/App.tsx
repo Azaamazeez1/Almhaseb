@@ -246,6 +246,7 @@ export default function App() {
             transactions={transactions}
             customers={customers}
             suppliers={suppliers}
+            items={items}
             onOpenAddModal={(type) => setActiveModal(type)}
             onRestoreData={(importedState) => {
               setItems(importedState.items);
