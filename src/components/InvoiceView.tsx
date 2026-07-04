@@ -87,6 +87,10 @@ export default function InvoiceView({
   const [finalDiscountPercent, setFinalDiscountPercent] = useState(0);
   const [finalTax, setFinalTax] = useState(0);
   const [finalTaxPercent, setFinalTaxPercent] = useState(0);
+  const [discountInputStr, setDiscountInputStr] = useState('');
+  const [discountPercentInputStr, setDiscountPercentInputStr] = useState('');
+  const [taxInputStr, setTaxInputStr] = useState('');
+  const [taxPercentInputStr, setTaxPercentInputStr] = useState('');
   const [finalNotes, setFinalNotes] = useState('');
 
   // Daily Filter state - defaults to current day
@@ -131,9 +135,23 @@ export default function InvoiceView({
     setFinalDiscountPercent(0);
     setFinalTax(0);
     setFinalTaxPercent(0);
+    setDiscountInputStr('');
+    setDiscountPercentInputStr('');
+    setTaxInputStr('');
+    setTaxPercentInputStr('');
     setFinalNotes('');
     setInvoiceNumber(`${invoiceType === 'sale' ? 'S' : 'P'}-${Date.now().toString().slice(-6)}`);
   };
+
+  // Sync string values when finalizer or discount modal opens
+  React.useEffect(() => {
+    if (isFinalizerOpen || isDiscountModalOpen) {
+      setDiscountInputStr(finalDiscount === 0 ? '' : finalDiscount.toString());
+      setDiscountPercentInputStr(finalDiscountPercent === 0 ? '' : finalDiscountPercent.toString());
+      setTaxInputStr(finalTax === 0 ? '' : finalTax.toString());
+      setTaxPercentInputStr(finalTaxPercent === 0 ? '' : finalTaxPercent.toString());
+    }
+  }, [isFinalizerOpen, isDiscountModalOpen]);
 
   // Generate initial invoice number
   React.useEffect(() => {
@@ -318,26 +336,44 @@ export default function InvoiceView({
   // Sync percentages with values
   const handleDiscountChange = (val: number) => {
     setFinalDiscount(val);
+    setDiscountInputStr(val === 0 ? '' : val.toString());
     if (subtotal > 0) {
-      setFinalDiscountPercent(parseFloat(((val / subtotal) * 100).toFixed(2)));
+      const pct = parseFloat(((val / subtotal) * 100).toFixed(2));
+      setFinalDiscountPercent(pct);
+      setDiscountPercentInputStr(pct === 0 ? '' : pct.toString());
+    } else {
+      setFinalDiscountPercent(0);
+      setDiscountPercentInputStr('');
     }
   };
 
   const handleDiscountPercentChange = (pct: number) => {
     setFinalDiscountPercent(pct);
-    setFinalDiscount(parseFloat(((pct / 100) * subtotal).toFixed(2)));
+    setDiscountPercentInputStr(pct === 0 ? '' : pct.toString());
+    const amt = parseFloat(((pct / 100) * subtotal).toFixed(2));
+    setFinalDiscount(amt);
+    setDiscountInputStr(amt === 0 ? '' : amt.toString());
   };
 
   const handleTaxChange = (val: number) => {
     setFinalTax(val);
+    setTaxInputStr(val === 0 ? '' : val.toString());
     if (subtotal > 0) {
-      setFinalTaxPercent(parseFloat(((val / subtotal) * 100).toFixed(2)));
+      const pct = parseFloat(((val / subtotal) * 100).toFixed(2));
+      setFinalTaxPercent(pct);
+      setTaxPercentInputStr(pct === 0 ? '' : pct.toString());
+    } else {
+      setFinalTaxPercent(0);
+      setTaxPercentInputStr('');
     }
   };
 
   const handleTaxPercentChange = (pct: number) => {
     setFinalTaxPercent(pct);
-    setFinalTax(parseFloat(((pct / 100) * subtotal).toFixed(2)));
+    setTaxPercentInputStr(pct === 0 ? '' : pct.toString());
+    const amt = parseFloat(((pct / 100) * subtotal).toFixed(2));
+    setFinalTax(amt);
+    setTaxInputStr(amt === 0 ? '' : amt.toString());
   };
 
   // Post / Save invoice
@@ -1293,8 +1329,22 @@ export default function InvoiceView({
                       step="any"
                       min="0"
                       max="100"
-                      value={finalDiscountPercent || ''}
-                      onChange={(e) => handleDiscountPercentChange(parseFloat(e.target.value) || 0)}
+                      value={discountPercentInputStr}
+                      onChange={(e) => {
+                        const str = e.target.value;
+                        setDiscountPercentInputStr(str);
+                        const val = parseFloat(str);
+                        if (!isNaN(val)) {
+                          setFinalDiscountPercent(val);
+                          const amt = parseFloat(((val / 100) * subtotal).toFixed(2));
+                          setFinalDiscount(amt);
+                          setDiscountInputStr(amt === 0 ? '' : amt.toString());
+                        } else {
+                          setFinalDiscountPercent(0);
+                          setFinalDiscount(0);
+                          setDiscountInputStr('');
+                        }
+                      }}
                       className="w-full pl-10 pr-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-mono text-center font-bold focus:outline-none"
                     />
                   </div>
@@ -1305,8 +1355,27 @@ export default function InvoiceView({
                       step="any"
                       min="0"
                       max={subtotal}
-                      value={finalDiscount || ''}
-                      onChange={(e) => handleDiscountChange(parseFloat(e.target.value) || 0)}
+                      value={discountInputStr}
+                      onChange={(e) => {
+                        const str = e.target.value;
+                        setDiscountInputStr(str);
+                        const val = parseFloat(str);
+                        if (!isNaN(val)) {
+                          setFinalDiscount(val);
+                          if (subtotal > 0) {
+                            const pct = parseFloat(((val / subtotal) * 100).toFixed(2));
+                            setFinalDiscountPercent(pct);
+                            setDiscountPercentInputStr(pct === 0 ? '' : pct.toString());
+                          } else {
+                            setFinalDiscountPercent(0);
+                            setDiscountPercentInputStr('');
+                          }
+                        } else {
+                          setFinalDiscount(0);
+                          setFinalDiscountPercent(0);
+                          setDiscountPercentInputStr('');
+                        }
+                      }}
                       className="w-full pl-10 pr-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-mono text-center font-bold focus:outline-none"
                     />
                   </div>
@@ -1324,8 +1393,22 @@ export default function InvoiceView({
                       step="any"
                       min="0"
                       max="100"
-                      value={finalTaxPercent || ''}
-                      onChange={(e) => handleTaxPercentChange(parseFloat(e.target.value) || 0)}
+                      value={taxPercentInputStr}
+                      onChange={(e) => {
+                        const str = e.target.value;
+                        setTaxPercentInputStr(str);
+                        const val = parseFloat(str);
+                        if (!isNaN(val)) {
+                          setFinalTaxPercent(val);
+                          const amt = parseFloat(((val / 100) * subtotal).toFixed(2));
+                          setFinalTax(amt);
+                          setTaxInputStr(amt === 0 ? '' : amt.toString());
+                        } else {
+                          setFinalTaxPercent(0);
+                          setFinalTax(0);
+                          setTaxInputStr('');
+                        }
+                      }}
                       className="w-full pl-10 pr-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-mono text-center font-bold focus:outline-none"
                     />
                   </div>
@@ -1335,8 +1418,27 @@ export default function InvoiceView({
                       type="number"
                       step="any"
                       min="0"
-                      value={finalTax || ''}
-                      onChange={(e) => handleTaxChange(parseFloat(e.target.value) || 0)}
+                      value={taxInputStr}
+                      onChange={(e) => {
+                        const str = e.target.value;
+                        setTaxInputStr(str);
+                        const val = parseFloat(str);
+                        if (!isNaN(val)) {
+                          setFinalTax(val);
+                          if (subtotal > 0) {
+                            const pct = parseFloat(((val / subtotal) * 100).toFixed(2));
+                            setFinalTaxPercent(pct);
+                            setTaxPercentInputStr(pct === 0 ? '' : pct.toString());
+                          } else {
+                            setFinalTaxPercent(0);
+                            setTaxPercentInputStr('');
+                          }
+                        } else {
+                          setFinalTax(0);
+                          setFinalTaxPercent(0);
+                          setTaxPercentInputStr('');
+                        }
+                      }}
                       className="w-full pl-10 pr-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-mono text-center font-bold focus:outline-none"
                     />
                   </div>
@@ -1415,8 +1517,22 @@ export default function InvoiceView({
                       min="0"
                       max="100"
                       placeholder="0"
-                      value={finalDiscountPercent || ''}
-                      onChange={(e) => handleDiscountPercentChange(parseFloat(e.target.value) || 0)}
+                      value={discountPercentInputStr}
+                      onChange={(e) => {
+                        const str = e.target.value;
+                        setDiscountPercentInputStr(str);
+                        const val = parseFloat(str);
+                        if (!isNaN(val)) {
+                          setFinalDiscountPercent(val);
+                          const amt = parseFloat(((val / 100) * subtotal).toFixed(2));
+                          setFinalDiscount(amt);
+                          setDiscountInputStr(amt === 0 ? '' : amt.toString());
+                        } else {
+                          setFinalDiscountPercent(0);
+                          setFinalDiscount(0);
+                          setDiscountInputStr('');
+                        }
+                      }}
                       className="w-full pl-11 pr-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-mono text-center font-bold focus:outline-none focus:border-rose-500 transition-colors"
                       autoFocus
                     />
@@ -1429,8 +1545,27 @@ export default function InvoiceView({
                       min="0"
                       max={subtotal}
                       placeholder="0.00"
-                      value={finalDiscount || ''}
-                      onChange={(e) => handleDiscountChange(parseFloat(e.target.value) || 0)}
+                      value={discountInputStr}
+                      onChange={(e) => {
+                        const str = e.target.value;
+                        setDiscountInputStr(str);
+                        const val = parseFloat(str);
+                        if (!isNaN(val)) {
+                          setFinalDiscount(val);
+                          if (subtotal > 0) {
+                            const pct = parseFloat(((val / subtotal) * 100).toFixed(2));
+                            setFinalDiscountPercent(pct);
+                            setDiscountPercentInputStr(pct === 0 ? '' : pct.toString());
+                          } else {
+                            setFinalDiscountPercent(0);
+                            setDiscountPercentInputStr('');
+                          }
+                        } else {
+                          setFinalDiscount(0);
+                          setFinalDiscountPercent(0);
+                          setDiscountPercentInputStr('');
+                        }
+                      }}
                       className="w-full pl-11 pr-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-mono text-center font-bold focus:outline-none focus:border-rose-500 transition-colors"
                     />
                   </div>
