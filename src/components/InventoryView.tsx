@@ -11,7 +11,9 @@ import {
   Package,
   TrendingUp,
   Tag,
-  DollarSign
+  DollarSign,
+  X,
+  Sparkles
 } from 'lucide-react';
 import { Item } from '../types';
 import { formatCurrency } from '../utils';
@@ -37,6 +39,27 @@ export default function InventoryView({
   const [editedSalePrice, setEditedSalePrice] = useState<number>(0);
   const [editedStock, setEditedStock] = useState<number>(0);
   const [editedName, setEditedName] = useState<string>('');
+
+  // States for the beautiful item edit card/modal
+  const [modalEditingItem, setModalEditingItem] = useState<Item | null>(null);
+  const [modalEditName, setModalEditName] = useState('');
+  const [modalEditCode, setModalEditCode] = useState('');
+  const [modalEditStock, setModalEditStock] = useState(0);
+  const [modalEditCost, setModalEditCost] = useState(0);
+  const [modalEditPrice, setModalEditPrice] = useState(0);
+  const [modalEditUnit, setModalEditUnit] = useState('حبة');
+  const [modalEditCurrency, setModalEditCurrency] = useState('USD');
+
+  const startModalEditing = (item: Item) => {
+    setModalEditingItem(item);
+    setModalEditName(item.name);
+    setModalEditCode(item.code);
+    setModalEditStock(item.stock);
+    setModalEditCost(item.unitCost);
+    setModalEditPrice(item.salePrice);
+    setModalEditUnit(item.unit || 'حبة');
+    setModalEditCurrency(item.currency || 'USD');
+  };
 
   // Stock counting states (جرد البضائع)
   const [auditMode, setAuditMode] = useState(false);
@@ -258,7 +281,18 @@ export default function InventoryView({
                 const auditDiff = auditQty - item.stock;
 
                 return (
-                  <tr key={item.id} className="hover:bg-slate-50/50 transition-colors">
+                  <tr
+                    key={item.id}
+                    onClick={(e) => {
+                      const target = e.target as HTMLElement;
+                      if (target.closest('input') || target.closest('select') || target.closest('button')) {
+                        return;
+                      }
+                      startModalEditing(item);
+                    }}
+                    className="hover:bg-teal-50/20 transition-colors cursor-pointer group"
+                    title="انقر لعرض بطاقة تعديل الصنف الفورية"
+                  >
                     {/* Item ID/Code */}
                     <td className="p-4 text-center font-mono text-xs font-bold text-slate-400">
                       <div className="flex items-center justify-center gap-1 bg-slate-100 px-2 py-0.5 rounded-lg w-max mx-auto">
@@ -278,7 +312,12 @@ export default function InventoryView({
                           className="px-2 py-1 bg-white border border-slate-300 rounded text-sm w-full font-bold focus:outline-emerald-600"
                         />
                       ) : (
-                        <span>{item.name}</span>
+                        <div className="flex items-center justify-between gap-2">
+                          <span>{item.name}</span>
+                          <span className="text-[10px] text-teal-700 font-black bg-teal-50 border border-teal-100 px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-all">
+                            بطاقة تعديل ✎
+                          </span>
+                        </div>
                       )}
                     </td>
 
@@ -409,6 +448,151 @@ export default function InventoryView({
           </table>
         </div>
       </div>
+
+      {/* Beautiful "بطاقة تعديل الصنف" (Edit Item Modal Card) */}
+      {modalEditingItem && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200" dir="rtl">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-teal-100 animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-4">
+              <h3 className="font-black text-base text-slate-800 flex items-center gap-2">
+                <div className="p-1.5 bg-teal-50 text-teal-600 rounded-lg">
+                  <Sparkles className="h-4.5 w-4.5 text-teal-600" />
+                </div>
+                <span>بطاقة تعديل الصنف</span>
+              </h3>
+              <button
+                onClick={() => setModalEditingItem(null)}
+                className="text-gray-400 hover:text-slate-800 p-1 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              if (!modalEditName || !modalEditCode) return;
+              onUpdateItem({
+                ...modalEditingItem,
+                name: modalEditName,
+                code: modalEditCode,
+                stock: modalEditStock,
+                unitCost: modalEditCost,
+                salePrice: modalEditPrice,
+                unit: modalEditUnit,
+                currency: modalEditCurrency
+              });
+              setModalEditingItem(null);
+            }} className="space-y-4">
+              <div>
+                <label className="block text-xs font-black text-gray-500 mb-1 text-right">اسم الصنف</label>
+                <input
+                  type="text"
+                  required
+                  value={modalEditName}
+                  onChange={(e) => setModalEditName(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-teal-600 focus:bg-white transition-all font-black text-right"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-black text-gray-500 mb-1 text-right">رقم الصنف / الباركود</label>
+                  <input
+                    type="text"
+                    required
+                    value={modalEditCode}
+                    onChange={(e) => setModalEditCode(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-center focus:outline-none focus:border-teal-600 focus:bg-white transition-all font-bold"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-black text-gray-500 mb-1 text-right">وحدة القياس</label>
+                  <select
+                    value={modalEditUnit}
+                    onChange={(e) => setModalEditUnit(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-teal-600 focus:bg-white transition-all font-bold text-center"
+                  >
+                    <option value="حبة">حبة</option>
+                    <option value="كرتون">كرتون</option>
+                    <option value="كيس">كيس</option>
+                    <option value="متر">متر</option>
+                    <option value="لتر">لتر</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-black text-gray-500 mb-1 text-right">المخزون الحالي</label>
+                  <input
+                    type="number"
+                    required
+                    value={modalEditStock}
+                    onChange={(e) => setModalEditStock(parseInt(e.target.value, 10) || 0)}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-center focus:outline-none focus:border-teal-600 focus:bg-white transition-all font-bold"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-black text-gray-500 mb-1 text-right">العملة</label>
+                  <select
+                    value={modalEditCurrency}
+                    onChange={(e) => setModalEditCurrency(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-teal-600 focus:bg-white transition-all font-bold text-center"
+                  >
+                    <option value="USD">دولار أمريكي (USD)</option>
+                    <option value="YER">ريال يمني (YER)</option>
+                    <option value="SAR">ريال سعودي (SAR)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-black text-gray-500 mb-1 text-right">سعر التكلفة (شراء)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    required
+                    value={modalEditCost}
+                    onChange={(e) => setModalEditCost(parseFloat(e.target.value) || 0)}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-center focus:outline-none focus:border-teal-600 focus:bg-white transition-all font-bold"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-black text-gray-500 mb-1 text-right">سعر البيع المقترح</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    required
+                    value={modalEditPrice}
+                    onChange={(e) => setModalEditPrice(parseFloat(e.target.value) || 0)}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-center focus:outline-none focus:border-teal-600 focus:bg-white transition-all font-bold"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setModalEditingItem(null)}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold cursor-pointer"
+                >
+                  إلغاء
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold shadow-md cursor-pointer"
+                >
+                  حفظ بطاقة التعديل
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

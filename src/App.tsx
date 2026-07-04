@@ -247,6 +247,7 @@ export default function App() {
             customers={customers}
             suppliers={suppliers}
             items={items}
+            onUpdateItem={handleUpdateItem}
             onOpenAddModal={(type) => setActiveModal(type)}
             onRestoreData={(importedState) => {
               setItems(importedState.items);

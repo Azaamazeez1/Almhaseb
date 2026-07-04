@@ -30,6 +30,7 @@ interface DashboardProps {
   customers: Customer[];
   suppliers: Supplier[];
   items: Item[];
+  onUpdateItem: (updatedItem: Item) => void;
   onOpenAddModal: (type: 'item' | 'customer' | 'supplier' | 'voucher_in' | 'voucher_out' | 'sale_return' | 'purchase_return') => void;
   onRestoreData: (importedState: any) => void;
   stateToBackup: any;
@@ -41,6 +42,7 @@ export default function Dashboard({
   customers,
   suppliers,
   items,
+  onUpdateItem,
   onOpenAddModal,
   onRestoreData,
   stateToBackup,
@@ -59,6 +61,27 @@ export default function Dashboard({
   const [saleInvoiceFilter, setSaleInvoiceFilter] = useState('');
   const [purchaseInvoiceFilter, setPurchaseInvoiceFilter] = useState('');
   const [warningBannerOpen, setWarningBannerOpen] = useState(true);
+
+  // States for the beautiful item edit card/modal
+  const [editingItem, setEditingItem] = useState<Item | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editCode, setEditCode] = useState('');
+  const [editStock, setEditStock] = useState(0);
+  const [editCost, setEditCost] = useState(0);
+  const [editPrice, setEditPrice] = useState(0);
+  const [editUnit, setEditUnit] = useState('حبة');
+  const [editCurrency, setEditCurrency] = useState('USD');
+
+  const startEditingItem = (item: Item) => {
+    setEditingItem(item);
+    setEditName(item.name);
+    setEditCode(item.code);
+    setEditStock(item.stock);
+    setEditCost(item.unitCost);
+    setEditPrice(item.salePrice);
+    setEditUnit(item.unit || 'حبة');
+    setEditCurrency(item.currency || 'USD');
+  };
 
   // Calculate summaries
   const summary = calculateSummary(transactions, customers, suppliers);
@@ -438,9 +461,13 @@ export default function Dashboard({
               {formatCurrency(calculatedProfit)}
             </span>
           </div>
-          <div className="flex items-center gap-1">
+          <div
+            onClick={() => setActiveTab('inventory')}
+            className="flex items-center gap-1 cursor-pointer hover:bg-slate-50 px-2 py-1 rounded-lg transition-colors border border-transparent hover:border-slate-100"
+            title="انقر لعرض المخزون الكامل وتعديله"
+          >
             <span className="text-xs font-black text-gray-400">المخزون:</span>
-            <span className="text-sm font-black text-slate-700">
+            <span className="text-sm font-black text-slate-700 underline decoration-dotted">
               {totalStockQty} وحدة ({formatCurrency(closingStockValue)})
             </span>
           </div>
@@ -560,9 +587,14 @@ export default function Dashboard({
 
       {/* 7. "المخزون" (Inventory Table) Section mimicking screenshots 2 & 3 */}
       <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
-        {/* Teal Header Banner */}
-        <div className="bg-teal-600 text-white p-3 text-center font-black text-sm">
-          المخزون
+        {/* Teal Header Banner - Clickable to enter full inventory view */}
+        <div
+          onClick={() => setActiveTab('inventory')}
+          className="bg-teal-600 hover:bg-teal-700 text-white p-3.5 text-center font-black text-sm cursor-pointer transition-colors flex items-center justify-center gap-2"
+          title="انقر للانتقال إلى صفحة المخزون الكامل والاطلاع على جميع البيانات"
+        >
+          <span>المخزون (انقر هنا لعرض المخزون الكامل والتحكم به)</span>
+          <ChevronLeft className="h-4 w-4" />
         </div>
 
         {/* Inventory Item Table */}
@@ -571,7 +603,7 @@ export default function Dashboard({
             <thead>
               <tr className="bg-slate-100 text-gray-700 font-black border-b border-slate-200">
                 <th className="p-3">رقم الصنف</th>
-                <th className="p-3">اسم الصنف</th>
+                <th className="p-3">اسم الصنف (اضغط للتعديل)</th>
                 <th className="p-3 text-center">العمله</th>
                 <th className="p-3 text-center">المخزون</th>
                 <th className="p-3 text-center">تكلفة الوحده</th>
@@ -580,9 +612,21 @@ export default function Dashboard({
             </thead>
             <tbody className="divide-y divide-slate-100 text-gray-600">
               {filteredItems.map((item) => (
-                <tr key={item.id} className="hover:bg-slate-50 transition-colors">
+                <tr
+                  key={item.id}
+                  onClick={() => startEditingItem(item)}
+                  className="group hover:bg-teal-50/30 transition-colors cursor-pointer"
+                  title="اضغط على هذا الصنف لعرض بطاقة التعديل الفورية"
+                >
                   <td className="p-3 font-mono font-bold text-slate-500">{item.code}</td>
-                  <td className="p-3 font-black text-slate-800">{item.name}</td>
+                  <td className="p-3 font-black text-slate-800">
+                    <div className="flex items-center justify-between gap-2">
+                      <span>{item.name}</span>
+                      <span className="text-[10px] text-teal-700 font-black bg-teal-50 border border-teal-100 px-1.5 py-0.5 rounded transition-all group-hover:scale-105">
+                        بطاقة تعديل ✎
+                      </span>
+                    </div>
+                  </td>
                   <td className="p-3 text-center text-gray-400">{item.currency || 'USD'}</td>
                   <td className="p-3 text-center font-mono font-bold text-slate-700">
                     {item.stock} {item.unit}
@@ -762,6 +806,151 @@ export default function Dashboard({
           </table>
         </div>
       </div>
+
+      {/* Beautiful "بطاقة تعديل الصنف" (Edit Item Modal Card) */}
+      {editingItem && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200" dir="rtl">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-teal-100 animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-4">
+              <h3 className="font-black text-base text-slate-800 flex items-center gap-2">
+                <div className="p-1.5 bg-teal-50 text-teal-600 rounded-lg">
+                  <Sparkles className="h-4.5 w-4.5 text-teal-600" />
+                </div>
+                <span>بطاقة تعديل الصنف</span>
+              </h3>
+              <button
+                onClick={() => setEditingItem(null)}
+                className="text-gray-400 hover:text-slate-800 p-1 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              if (!editName || !editCode) return;
+              onUpdateItem({
+                ...editingItem,
+                name: editName,
+                code: editCode,
+                stock: editStock,
+                unitCost: editCost,
+                salePrice: editPrice,
+                unit: editUnit,
+                currency: editCurrency
+              });
+              setEditingItem(null);
+            }} className="space-y-4">
+              <div>
+                <label className="block text-xs font-black text-gray-500 mb-1 text-right">اسم الصنف</label>
+                <input
+                  type="text"
+                  required
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-teal-600 focus:bg-white transition-all font-black text-right"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-black text-gray-500 mb-1 text-right">رقم الصنف / الباركود</label>
+                  <input
+                    type="text"
+                    required
+                    value={editCode}
+                    onChange={(e) => setEditCode(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-center focus:outline-none focus:border-teal-600 focus:bg-white transition-all font-bold"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-black text-gray-500 mb-1 text-right">وحدة القياس</label>
+                  <select
+                    value={editUnit}
+                    onChange={(e) => setEditUnit(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-teal-600 focus:bg-white transition-all font-bold text-center"
+                  >
+                    <option value="حبة">حبة</option>
+                    <option value="كرتون">كرتون</option>
+                    <option value="كيس">كيس</option>
+                    <option value="متر">متر</option>
+                    <option value="لتر">لتر</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-black text-gray-500 mb-1 text-right">المخزون الحالي</label>
+                  <input
+                    type="number"
+                    required
+                    value={editStock}
+                    onChange={(e) => setEditStock(parseInt(e.target.value, 10) || 0)}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-center focus:outline-none focus:border-teal-600 focus:bg-white transition-all font-bold"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-black text-gray-500 mb-1 text-right">العملة</label>
+                  <select
+                    value={editCurrency}
+                    onChange={(e) => setEditCurrency(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-teal-600 focus:bg-white transition-all font-bold text-center"
+                  >
+                    <option value="USD">دولار أمريكي (USD)</option>
+                    <option value="YER">ريال يمني (YER)</option>
+                    <option value="SAR">ريال سعودي (SAR)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-black text-gray-500 mb-1 text-right">سعر التكلفة (شراء)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    required
+                    value={editCost}
+                    onChange={(e) => setEditCost(parseFloat(e.target.value) || 0)}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-center focus:outline-none focus:border-teal-600 focus:bg-white transition-all font-bold"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-black text-gray-500 mb-1 text-right">سعر البيع المقترح</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    required
+                    value={editPrice}
+                    onChange={(e) => setEditPrice(parseFloat(e.target.value) || 0)}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-center focus:outline-none focus:border-teal-600 focus:bg-white transition-all font-bold"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setEditingItem(null)}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold cursor-pointer"
+                >
+                  إلغاء
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold shadow-md cursor-pointer"
+                >
+                  حفظ بطاقة التعديل
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
