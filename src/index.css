@@ -1,0 +1,27 @@
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Cairo", ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Custom styling for printing account ledgers cleanly */
+@media print {
+  body {
+    background-color: white !important;
+    color: black !important;
+  }
+  header, aside, button, footer, #toggle-audit-mode-btn, #add-item-modal-btn, #search-parties-input, #print-ledger-btn, #close-ledger-btn {
+    display: none !important;
+  }
+  #printable-statement {
+    display: block !important;
+    width: 100% !important;
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+}
+

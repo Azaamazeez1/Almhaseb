@@ -1,0 +1,6 @@
+{
+  "name": "برنامج المحاسبة وجرد البضائع",
+  "description": "برنامج متكامل للمحاسبة المالية وإدارة المخزون وجرد البضائع، يتيح تسجيل المبيعات والمشتريات وإدارة العملاء والموردين والسندات المالية مع تقارير شاملة.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

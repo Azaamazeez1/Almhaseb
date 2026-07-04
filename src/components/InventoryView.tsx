@@ -1,0 +1,414 @@
+import React, { useState } from 'react';
+import {
+  Layers,
+  Search,
+  Plus,
+  RefreshCw,
+  Edit2,
+  Check,
+  AlertTriangle,
+  Barcode,
+  Package,
+  TrendingUp,
+  Tag,
+  DollarSign
+} from 'lucide-react';
+import { Item } from '../types';
+import { formatCurrency } from '../utils';
+
+interface InventoryViewProps {
+  items: Item[];
+  onAddItem: (item: Omit<Item, 'id'>) => void;
+  onUpdateStock: (itemId: string, newStock: number) => void;
+  onUpdateItem: (updatedItem: Item) => void;
+  onOpenAddModal: () => void;
+}
+
+export default function InventoryView({
+  items,
+  onAddItem,
+  onUpdateStock,
+  onUpdateItem,
+  onOpenAddModal
+}: InventoryViewProps) {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  const [editedCost, setEditedCost] = useState<number>(0);
+  const [editedSalePrice, setEditedSalePrice] = useState<number>(0);
+  const [editedStock, setEditedStock] = useState<number>(0);
+  const [editedName, setEditedName] = useState<string>('');
+
+  // Stock counting states (جرد البضائع)
+  const [auditMode, setAuditMode] = useState(false);
+  const [auditQuantities, setAuditQuantities] = useState<Record<string, number>>({});
+
+  const filteredItems = items.filter((item) => {
+    const term = searchTerm.toLowerCase();
+    return (
+      item.name.toLowerCase().includes(term) ||
+      item.code.toLowerCase().includes(term) ||
+      item.id.toLowerCase().includes(term)
+    );
+  });
+
+  const startEditing = (item: Item) => {
+    setEditingItemId(item.id);
+    setEditedCost(item.unitCost);
+    setEditedSalePrice(item.salePrice);
+    setEditedStock(item.stock);
+    setEditedName(item.name);
+  };
+
+  const saveEditing = (item: Item) => {
+    onUpdateItem({
+      ...item,
+      name: editedName,
+      unitCost: editedCost,
+      salePrice: editedSalePrice,
+      stock: editedStock
+    });
+    setEditingItemId(null);
+  };
+
+  const handleAuditChange = (itemId: string, value: string) => {
+    const qty = parseInt(value, 10);
+    setAuditQuantities((prev) => ({
+      ...prev,
+      [itemId]: isNaN(qty) ? 0 : qty
+    }));
+  };
+
+  const applyAudit = () => {
+    const confirmed = window.confirm('هل أنت متأكد من تطبيق فروقات جرد البضائع وتعديل الكميات الحالية؟');
+    if (!confirmed) return;
+
+    Object.entries(auditQuantities).forEach(([itemId, qty]) => {
+      onUpdateStock(itemId, Number(qty));
+    });
+
+    setAuditQuantities({});
+    setAuditMode(false);
+    alert('تم تعديل وتطبيق جرد المخازن بنجاح!');
+  };
+
+  // Calculations for total inventory value
+  const totalCostValue = items.reduce((sum, item) => sum + item.unitCost * item.stock, 0);
+  const totalSaleValue = items.reduce((sum, item) => sum + item.salePrice * item.stock, 0);
+  const expectedProfit = totalSaleValue - totalCostValue;
+
+  return (
+    <div dir="rtl" className="space-y-6">
+      {/* Header and Summary stats */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+            <Layers className="h-5.5 w-5.5 text-emerald-600" />
+            جرد بضائع المخزن والمواد
+          </h2>
+          <p className="text-xs text-gray-500">جرد ومراقبة حركة المواد وأسعار التكلفة وهامش الأرباح التقديري.</p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            id="toggle-audit-mode-btn"
+            onClick={() => {
+              if (auditMode) {
+                setAuditQuantities({});
+              }
+              setAuditMode(!auditMode);
+            }}
+            className={`px-4 py-2.5 rounded-xl text-xs font-semibold shadow-sm transition-all cursor-pointer ${
+              auditMode
+                ? 'bg-amber-600 hover:bg-amber-700 text-white border border-amber-700'
+                : 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-200'
+            }`}
+          >
+            {auditMode ? 'إلغاء وضع الجرد الفعلي' : 'بدء جرد بضائع المخازن'}
+          </button>
+
+          <button
+            id="add-item-modal-btn"
+            onClick={onOpenAddModal}
+            className="bg-emerald-700 hover:bg-emerald-800 text-white px-4 py-2.5 rounded-xl text-xs font-semibold shadow-sm flex items-center gap-2 cursor-pointer transition-colors"
+          >
+            <Plus className="h-4 w-4" />
+            <span>إضافة صنف جديد</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="bg-white rounded-2xl p-5 border border-slate-100 flex items-center gap-4 shadow-sm">
+          <div className="bg-emerald-50 text-emerald-600 p-3.5 rounded-2xl">
+            <Package className="h-6 w-6" />
+          </div>
+          <div>
+            <span className="text-xs text-gray-400 block font-medium mb-0.5">عدد الأصناف المسجلة</span>
+            <span className="text-2xl font-black text-slate-800 font-mono">{items.length} أصناف</span>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl p-5 border border-slate-100 flex items-center gap-4 shadow-sm">
+          <div className="bg-teal-50 text-teal-600 p-3.5 rounded-2xl">
+            <TrendingUp className="h-6 w-6" />
+          </div>
+          <div>
+            <span className="text-xs text-gray-400 block font-medium mb-0.5">القيمة الإجمالية بالتكلفة</span>
+            <span className="text-2xl font-black text-slate-800 font-sans">{formatCurrency(totalCostValue, 'YER')}</span>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl p-5 border border-slate-100 flex items-center gap-4 shadow-sm">
+          <div className="bg-blue-50 text-blue-600 p-3.5 rounded-2xl">
+            <Tag className="h-6 w-6" />
+          </div>
+          <div>
+            <span className="text-xs text-gray-400 block font-medium mb-0.5">الربح المتوقع عند البيع</span>
+            <span className="text-2xl font-black text-emerald-600 font-sans">{formatCurrency(expectedProfit, 'YER')}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Audit Alert */}
+      {auditMode && (
+        <div id="audit-info-box" className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+            <div>
+              <h4 className="font-bold text-amber-950 text-sm">أنت الآن في وضع جرد بضائع المخزن الفعلي</h4>
+              <p className="text-xs text-amber-800 mt-1 leading-relaxed">
+                قم بإدخال الكميات الفعلية المتواجدة في رفوف مستودعك بالعمود &quot;الكمية الفعلية المجرودة&quot;.
+                سيقوم النظام تلقائياً بحساب الفروقات وتعديل كمية المخزن بناءً على مدخلاتك بمجرد النقر على تطبيق الجرد.
+              </p>
+            </div>
+          </div>
+          <button
+            id="apply-audit-btn"
+            onClick={applyAudit}
+            className="bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-sm cursor-pointer whitespace-nowrap transition-colors"
+          >
+            تطبيق فروقات جرد البضائع
+          </button>
+        </div>
+      )}
+
+      {/* Main Filter & Inventory Table Block */}
+      <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
+        {/* Search & Inputs mimicking bottom section of screen 3 */}
+        <div className="p-5 border-b border-slate-100 bg-slate-50/50 flex flex-col md:flex-row gap-4 items-center">
+          <div className="relative w-full md:flex-1">
+            <Search className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <input
+              id="search-inventory-input"
+              type="text"
+              placeholder="اسم الصنف او الرقم او نهاية رقم الصنف..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-4 pr-10 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-emerald-600 transition-colors"
+            />
+          </div>
+
+          <div className="flex flex-wrap md:flex-nowrap gap-3 w-full md:w-auto">
+            <div className="w-1/2 md:w-36">
+              <input
+                id="sales-invoice-ref-input"
+                type="text"
+                placeholder="رقم فاتورة البيع"
+                disabled
+                className="w-full px-3 py-2.5 bg-slate-100/80 border border-slate-200/60 rounded-xl text-xs text-center text-gray-400 focus:outline-none cursor-not-allowed"
+                title="يتم التصفية التلقائية للفواتير من شاشة المبيعات"
+              />
+            </div>
+            <div className="w-1/2 md:w-36">
+              <input
+                id="purchase-invoice-ref-input"
+                type="text"
+                disabled
+                placeholder="رقم فاتورة الشراء"
+                className="w-full px-3 py-2.5 bg-slate-100/80 border border-slate-200/60 rounded-xl text-xs text-center text-gray-400 focus:outline-none cursor-not-allowed"
+                title="يتم التصفية التلقائية للفواتير من شاشة المشتريات"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Inventory Table mimicking Screenshot 3 */}
+        <div className="overflow-x-auto">
+          <table className="w-full text-right border-collapse">
+            <thead>
+              <tr className="bg-slate-50 text-xs font-bold text-slate-500 border-b border-slate-100">
+                <th className="p-4 w-20 text-center">رقم الصنف</th>
+                <th className="p-4">اسم الصنف</th>
+                <th className="p-4 text-center">المخزون الحالي</th>
+                {auditMode && <th className="p-4 text-center bg-amber-50 text-amber-900">الكمية الفعلية المجرودة</th>}
+                {auditMode && <th className="p-4 text-center bg-amber-50 text-amber-900">الفارق (العجز/الزيادة)</th>}
+                <th className="p-4 text-center">الوحدة</th>
+                <th className="p-4">تكلفة الوحدة (سعر الشراء)</th>
+                <th className="p-4">سعر البيع المقترح</th>
+                <th className="p-4">العملة</th>
+                <th className="p-4">آخر شراء</th>
+                <th className="p-4 text-center w-28">العمليات</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-50 text-sm text-slate-600">
+              {filteredItems.map((item) => {
+                const isEditing = editingItemId === item.id;
+                const auditQty = auditQuantities[item.id] !== undefined ? auditQuantities[item.id] : item.stock;
+                const auditDiff = auditQty - item.stock;
+
+                return (
+                  <tr key={item.id} className="hover:bg-slate-50/50 transition-colors">
+                    {/* Item ID/Code */}
+                    <td className="p-4 text-center font-mono text-xs font-bold text-slate-400">
+                      <div className="flex items-center justify-center gap-1 bg-slate-100 px-2 py-0.5 rounded-lg w-max mx-auto">
+                        <Barcode className="h-3 w-3 text-gray-400" />
+                        <span>{item.code}</span>
+                      </div>
+                    </td>
+
+                    {/* Name */}
+                    <td className="p-4 font-bold text-slate-800">
+                      {isEditing ? (
+                        <input
+                          id={`edit-item-name-${item.id}`}
+                          type="text"
+                          value={editedName}
+                          onChange={(e) => setEditedName(e.target.value)}
+                          className="px-2 py-1 bg-white border border-slate-300 rounded text-sm w-full font-bold focus:outline-emerald-600"
+                        />
+                      ) : (
+                        <span>{item.name}</span>
+                      )}
+                    </td>
+
+                    {/* Stock */}
+                    <td className="p-4 text-center font-bold text-slate-800">
+                      {isEditing ? (
+                        <input
+                          id={`edit-item-stock-${item.id}`}
+                          type="number"
+                          value={editedStock}
+                          onChange={(e) => setEditedStock(parseInt(e.target.value, 10) || 0)}
+                          className="px-2 py-1 bg-white border border-slate-300 rounded text-sm w-20 text-center focus:outline-emerald-600"
+                        />
+                      ) : (
+                        <span className={item.stock === 0 ? 'text-rose-500 bg-rose-50 px-2 py-0.5 rounded-lg' : 'text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-lg'}>
+                          {item.stock} {item.unit}
+                        </span>
+                      )}
+                    </td>
+
+                    {/* Audit Columns */}
+                    {auditMode && (
+                      <td className="p-4 text-center bg-amber-50/40">
+                        <input
+                          id={`audit-item-qty-${item.id}`}
+                          type="number"
+                          value={auditQuantities[item.id] !== undefined ? auditQuantities[item.id] : ''}
+                          placeholder={item.stock.toString()}
+                          onChange={(e) => handleAuditChange(item.id, e.target.value)}
+                          className="w-20 px-2 py-1 text-center bg-white border border-amber-300 rounded-lg text-sm text-slate-800 font-bold focus:outline-amber-600"
+                        />
+                      </td>
+                    )}
+
+                    {auditMode && (
+                      <td className="p-4 text-center font-bold bg-amber-50/40">
+                        {auditDiff === 0 ? (
+                          <span className="text-gray-400 font-medium">-</span>
+                        ) : auditDiff > 0 ? (
+                          <span className="text-emerald-600 font-bold">+{auditDiff}</span>
+                        ) : (
+                          <span className="text-rose-600 font-bold">{auditDiff}</span>
+                        )}
+                      </td>
+                    )}
+
+                    {/* Unit */}
+                    <td className="p-4 text-center text-xs text-gray-400">{item.unit}</td>
+
+                    {/* Unit Cost */}
+                    <td className="p-4 font-semibold text-slate-700">
+                      {isEditing ? (
+                        <div className="flex items-center gap-1">
+                          <input
+                            id={`edit-item-cost-${item.id}`}
+                            type="number"
+                            step="0.01"
+                            value={editedCost}
+                            onChange={(e) => setEditedCost(parseFloat(e.target.value) || 0)}
+                            className="px-2 py-1 bg-white border border-slate-300 rounded text-sm w-20 text-left font-sans focus:outline-emerald-600"
+                          />
+                        </div>
+                      ) : (
+                        <span>{formatCurrency(item.unitCost, item.currency)}</span>
+                      )}
+                    </td>
+
+                    {/* Sale Price */}
+                    <td className="p-4 font-bold text-emerald-700">
+                      {isEditing ? (
+                        <input
+                          id={`edit-item-price-${item.id}`}
+                          type="number"
+                          step="0.01"
+                          value={editedSalePrice}
+                          onChange={(e) => setEditedSalePrice(parseFloat(e.target.value) || 0)}
+                          className="px-2 py-1 bg-white border border-slate-300 rounded text-sm w-20 text-left font-sans focus:outline-emerald-600"
+                        />
+                      ) : (
+                        <span>{formatCurrency(item.salePrice, item.currency)}</span>
+                      )}
+                    </td>
+
+                    {/* Currency */}
+                    <td className="p-4 text-xs font-semibold text-gray-500">
+                      {item.currency === 'YER' ? 'محلّي (ريال)' : item.currency}
+                    </td>
+
+                    {/* Last Purchase Price */}
+                    <td className="p-4 font-mono text-xs text-slate-500 font-semibold">
+                      {formatCurrency(item.lastPurchasePrice, item.currency)}
+                    </td>
+
+                    {/* Actions */}
+                    <td className="p-4 text-center">
+                      {isEditing ? (
+                        <button
+                          id={`save-item-btn-${item.id}`}
+                          onClick={() => saveEditing(item)}
+                          className="bg-emerald-600 hover:bg-emerald-700 text-white p-1.5 rounded-lg transition-colors cursor-pointer inline-flex items-center"
+                          title="حفظ التعديلات"
+                        >
+                          <Check className="h-4 w-4" />
+                        </button>
+                      ) : (
+                        <button
+                          id={`edit-item-btn-${item.id}`}
+                          onClick={() => startEditing(item)}
+                          className="text-gray-400 hover:text-emerald-700 p-1.5 rounded-lg hover:bg-emerald-50 transition-colors cursor-pointer inline-flex items-center"
+                          title="تعديل مواصفات الصنف"
+                        >
+                          <Edit2 className="h-4 w-4" />
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+
+              {filteredItems.length === 0 && (
+                <tr>
+                  <td colSpan={auditMode ? 11 : 9} className="p-8 text-center text-gray-400 font-medium">
+                    لا توجد أصناف مطابقة لعملية البحث.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
