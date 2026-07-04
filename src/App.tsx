@@ -37,13 +37,20 @@ export default function App() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [config, setConfig] = useState<AppConfig>({
     appName: 'برنامج المحاسبة وجرد البضائع',
-    currency: 'YER',
+    currency: 'USD',
     financialYear: '2026',
     thermalPrinterWidth: '80mm'
   });
 
   // Load initial states
   useEffect(() => {
+    // Force a one-time clear of old mock data so the user starts with a completely blank database
+    const hasForceCleared = localStorage.getItem('acct_inv_force_cleared_v3');
+    if (!hasForceCleared) {
+      localStorage.clear();
+      localStorage.setItem('acct_inv_force_cleared_v3', 'true');
+      localStorage.setItem('acct_inv_initialized', 'true');
+    }
     const initialState = getInitialState();
     setItems(initialState.items);
     setCustomers(initialState.customers);
@@ -158,7 +165,7 @@ export default function App() {
       unit: newItemUnit,
       unitCost: newItemCost,
       salePrice: newItemPrice,
-      currency: 'YER',
+      currency: config.currency,
       lastPurchasePrice: newItemCost
     };
 
@@ -219,6 +226,7 @@ export default function App() {
     if (!confirm) return;
 
     localStorage.clear();
+    localStorage.setItem('acct_inv_initialized', 'true');
     setItems([]);
     setCustomers([]);
     setSuppliers([]);
@@ -393,7 +401,7 @@ export default function App() {
                       return sum - tx.cashPaid;
                     }
                   }, 0),
-                  'YER'
+                  config.currency
                 )}
               </span>
             </div>

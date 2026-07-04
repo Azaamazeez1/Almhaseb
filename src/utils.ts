@@ -105,7 +105,7 @@ export const DEFAULT_TRANSACTIONS: Transaction[] = [
 
 export const DEFAULT_CONFIG: AppConfig = {
   appName: 'برنامج المحاسبة وجرد البضائع',
-  currency: 'YER',
+  currency: 'USD',
   financialYear: '2026',
   thermalPrinterWidth: '80mm'
 };
@@ -142,10 +142,31 @@ export function saveData<T>(key: string, data: T): void {
 
 // Global data states loaded or initialized
 export function getInitialState() {
-  const items = loadData<Item[]>(KEYS.ITEMS, DEFAULT_ITEMS);
-  const customers = loadData<Customer[]>(KEYS.CUSTOMERS, DEFAULT_CUSTOMERS);
-  const suppliers = loadData<Supplier[]>(KEYS.SUPPLIERS, DEFAULT_SUPPLIERS);
-  const transactions = loadData<Transaction[]>(KEYS.TRANSACTIONS, DEFAULT_TRANSACTIONS);
+  const initialized = localStorage.getItem(`${STORAGE_PREFIX}initialized`);
+  if (!initialized) {
+    // Start with a completely blank database
+    localStorage.setItem(`${STORAGE_PREFIX}initialized`, 'true');
+    saveAllStates({
+      items: [],
+      customers: [],
+      suppliers: [],
+      transactions: [],
+      config: DEFAULT_CONFIG
+    });
+    return {
+      items: [],
+      customers: [],
+      suppliers: [],
+      transactions: [],
+      config: DEFAULT_CONFIG
+    };
+  }
+
+  // Subsequent loads: fallback to empty arrays if keys don't exist
+  const items = loadData<Item[]>(KEYS.ITEMS, []);
+  const customers = loadData<Customer[]>(KEYS.CUSTOMERS, []);
+  const suppliers = loadData<Supplier[]>(KEYS.SUPPLIERS, []);
+  const transactions = loadData<Transaction[]>(KEYS.TRANSACTIONS, []);
   const config = loadData<AppConfig>(KEYS.CONFIG, DEFAULT_CONFIG);
 
   return { items, customers, suppliers, transactions, config };
@@ -318,10 +339,33 @@ export function exportToBackupFile(state: any) {
   downloadAnchor.remove();
 }
 
-export function formatCurrency(amount: number, currency = 'YER'): string {
-  return new Intl.NumberFormat('ar-YE', {
-    style: 'decimal',
+export function formatCurrency(amount: number, currency?: string): string {
+  let activeCurrency = 'USD'; // Default to USD
+  try {
+    const configData = localStorage.getItem('acct_inv_config');
+    if (configData) {
+      const parsed = JSON.parse(configData);
+      if (parsed && parsed.currency) {
+        activeCurrency = parsed.currency;
+      }
+    }
+  } catch (e) {
+    // fallback
+  }
+
+  // Treat 'YER' in old component calls as a placeholder that defaults to activeCurrency
+  const finalCurrency = currency && currency !== 'YER' ? currency : activeCurrency;
+
+  const formattedAmount = new Intl.NumberFormat('en-US', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
-  }).format(amount) + ' ' + (currency === 'YER' ? 'ريال' : currency === 'SAR' ? 'ريال سعودي' : '$');
+  }).format(amount);
+
+  if (finalCurrency === 'USD') {
+    return `$${formattedAmount}`;
+  } else if (finalCurrency === 'SAR') {
+    return `${formattedAmount} ر.س`;
+  } else {
+    return `${formattedAmount} ريال`;
+  }
 }
