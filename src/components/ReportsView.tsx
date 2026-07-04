@@ -121,7 +121,8 @@ export default function ReportsView({
                     .filter((t) => t.type === 'sale')
                     .reduce((sum, tx) => {
                       if (!tx.items) return sum;
-                      return sum + tx.items.reduce((acc, it) => acc + (it.price - (it.cost || 0)) * it.qty, 0);
+                      const txProfit = tx.items.reduce((acc, it) => acc + (it.price - (it.cost || 0)) * it.qty, 0);
+                      return sum + (txProfit - (tx.discount || 0));
                     }, 0),
                   'YER'
                 )}

@@ -239,6 +239,10 @@ export function calculateSummary(
             grossProfitFromSales += (it.price - cost) * it.qty;
           });
         }
+        // Subtract invoice discount from gross profit
+        if (tx.discount) {
+          grossProfitFromSales -= tx.discount;
+        }
         break;
       case 'purchase':
         boxBalance -= tx.cashPaid;
@@ -252,6 +256,10 @@ export function calculateSummary(
             const cost = it.cost || 0;
             grossProfitFromSales -= (it.price - cost) * it.qty;
           });
+        }
+        // Add back invoice discount from return to gross profit
+        if (tx.discount) {
+          grossProfitFromSales += tx.discount;
         }
         break;
       case 'purchase_return':

@@ -110,9 +110,8 @@ export default function Dashboard({
     .filter((t) => t.type === 'purchase_return')
     .reduce((sum, t) => sum + t.amount, 0);
 
-  // Profit calculation mirroring the screenshots logic:
-  // Profit = (Sales + Closing Stock + Purchase Return) - (Purchases + Opening Stock + Sales Return)
-  const calculatedProfit = (saleSum + closingStockValue + purchaseReturnSum) - (purchaseSum + openingStockValue + salesReturnSum);
+  // Profit calculation based on actual transaction item ledger costs and discounts
+  const calculatedProfit = summary.netProfit;
 
   // Yield / Return = (Profit / Costs) * 100
   const costBasis = openingStockValue + purchaseSum;
