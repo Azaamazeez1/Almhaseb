@@ -319,7 +319,7 @@ export default function InvoiceView({
   const handleDiscountChange = (val: number) => {
     setFinalDiscount(val);
     if (subtotal > 0) {
-      setFinalDiscountPercent(Math.round((val / subtotal) * 100));
+      setFinalDiscountPercent(parseFloat(((val / subtotal) * 100).toFixed(2)));
     }
   };
 
@@ -331,7 +331,7 @@ export default function InvoiceView({
   const handleTaxChange = (val: number) => {
     setFinalTax(val);
     if (subtotal > 0) {
-      setFinalTaxPercent(Math.round((val / subtotal) * 100));
+      setFinalTaxPercent(parseFloat(((val / subtotal) * 100).toFixed(2)));
     }
   };
 
@@ -1290,6 +1290,7 @@ export default function InvoiceView({
                     <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 font-bold">خصم %</span>
                     <input
                       type="number"
+                      step="any"
                       min="0"
                       max="100"
                       value={finalDiscountPercent || ''}
@@ -1301,6 +1302,7 @@ export default function InvoiceView({
                     <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 font-bold">ريال</span>
                     <input
                       type="number"
+                      step="any"
                       min="0"
                       max={subtotal}
                       value={finalDiscount || ''}
@@ -1319,6 +1321,7 @@ export default function InvoiceView({
                     <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 font-bold">ضريبة %</span>
                     <input
                       type="number"
+                      step="any"
                       min="0"
                       max="100"
                       value={finalTaxPercent || ''}
@@ -1330,6 +1333,7 @@ export default function InvoiceView({
                     <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 font-bold">ريال</span>
                     <input
                       type="number"
+                      step="any"
                       min="0"
                       value={finalTax || ''}
                       onChange={(e) => handleTaxChange(parseFloat(e.target.value) || 0)}
@@ -1407,6 +1411,7 @@ export default function InvoiceView({
                     <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 font-bold">خصم %</span>
                     <input
                       type="number"
+                      step="any"
                       min="0"
                       max="100"
                       placeholder="0"
@@ -1420,6 +1425,7 @@ export default function InvoiceView({
                     <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 font-bold">مبلغ</span>
                     <input
                       type="number"
+                      step="any"
                       min="0"
                       max={subtotal}
                       placeholder="0.00"
