@@ -83,6 +83,10 @@ export default function InventoryView({
   };
 
   const saveEditing = (item: Item) => {
+    if (editedCost > editedSalePrice) {
+      alert('عذراً! لا يمكن الحفظ لأن سعر الشراء (رأس المال) أعلى من سعر البيع (المبيع)، مما يعني حدوث خسارة على هذا الصنف. يرجى تعديل الأسعار أولاً لتجنب تسجيل خسائر.');
+      return;
+    }
     onUpdateItem({
       ...item,
       name: editedName,

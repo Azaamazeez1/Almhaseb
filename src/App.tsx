@@ -15,7 +15,11 @@ import {
   RefreshCw,
   Sparkles,
   PhoneCall,
-  Coins
+  Coins,
+  AlertTriangle,
+  CheckCircle2,
+  Info,
+  XCircle
 } from 'lucide-react';
 import { getInitialState, saveAllStates, formatCurrency } from './utils';
 import { Item, Customer, Supplier, Transaction, AppConfig } from './types';
@@ -92,6 +96,55 @@ export default function App() {
 
   const [newPartyName, setNewPartyName] = useState('');
   const [newPartyPhone, setNewPartyPhone] = useState('');
+
+  // --- Custom Alert System ---
+  const [alertConfig, setAlertConfig] = useState<{
+    message: string;
+    isOpen: boolean;
+    title?: string;
+    type?: 'success' | 'warning' | 'info' | 'error';
+  } | null>(null);
+
+  useEffect(() => {
+    window.alert = (message: string) => {
+      let type: 'success' | 'warning' | 'info' | 'error' = 'info';
+      if (
+        message.includes('نجاح') ||
+        message.includes('بنجاح') ||
+        message.includes('تم ') ||
+        message.includes('تمت') ||
+        message.includes('موفق')
+      ) {
+        type = 'success';
+      } else if (
+        message.includes('عذراً') ||
+        message.includes('خطأ') ||
+        message.includes('فشل') ||
+        message.includes('أكثر من') ||
+        message.includes('لا توجد')
+      ) {
+        type = 'error';
+      } else if (
+        message.includes('تنبيه') ||
+        message.includes('يرجى') ||
+        message.includes('يجب') ||
+        message.includes('الرجاء')
+      ) {
+        type = 'warning';
+      }
+
+      setAlertConfig({
+        message,
+        isOpen: true,
+        title: type === 'success' ? 'تمت العملية بنجاح' : (type === 'error' ? 'تنبيه أو خطأ' : (type === 'warning' ? 'تنبيه هـام' : 'إشعار النظام')),
+        type
+      });
+    };
+  }, []);
+
+  const handleCloseAlert = () => {
+    setAlertConfig(prev => prev ? { ...prev, isOpen: false } : null);
+  };
 
   // --- Functions to update state ---
   const handleAddTransaction = (newTx: Transaction) => {
@@ -208,6 +261,11 @@ export default function App() {
     const duplicateCode = items.some((it) => it.code === newItemCode);
     if (duplicateCode) {
       alert('عذراً، رقم الصنف أو الباركود هذا مسجل مسبقاً لصنف آخر.');
+      return;
+    }
+
+    if (newItemCost > newItemPrice) {
+      alert('عذراً! لا يمكن الحفظ لأن سعر الشراء (رأس المال) أعلى من سعر البيع المقترح (المبيع)، مما يعني حدوث خسارة على هذا الصنف. يرجى تعديل الأسعار أولاً لتجنب تسجيل خسائر.');
       return;
     }
 
@@ -886,6 +944,50 @@ export default function App() {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Custom Beautified Notification Alert Modal */}
+      {alertConfig && alertConfig.isOpen && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-200" dir="rtl">
+          <div className="bg-white rounded-[24px] max-w-sm w-full p-6 shadow-2xl border border-slate-100 text-center animate-in fade-in zoom-in-95 duration-250 flex flex-col items-center">
+            {/* Visual Icon Header depending on type */}
+            <div className={`w-14 h-14 rounded-full flex items-center justify-center mb-4 ${
+              alertConfig.type === 'success' ? 'bg-emerald-50 text-emerald-600' :
+              alertConfig.type === 'error' ? 'bg-rose-50 text-rose-600' :
+              alertConfig.type === 'warning' ? 'bg-amber-50 text-amber-600' :
+              'bg-teal-50 text-teal-600'
+            }`}>
+              {alertConfig.type === 'success' && <CheckCircle2 className="h-7 w-7" />}
+              {alertConfig.type === 'error' && <XCircle className="h-7 w-7" />}
+              {alertConfig.type === 'warning' && <AlertTriangle className="h-7 w-7" />}
+              {alertConfig.type === 'info' && <Info className="h-7 w-7" />}
+            </div>
+
+            {/* Title */}
+            <h3 className="font-black text-sm text-slate-800 mb-2">
+              {alertConfig.title}
+            </h3>
+
+            {/* Message Body */}
+            <p className="text-xs font-bold text-slate-600 leading-relaxed mb-6 whitespace-pre-line text-center max-w-[280px]">
+              {alertConfig.message}
+            </p>
+
+            {/* Action/Dismiss Button */}
+            <button
+              type="button"
+              onClick={handleCloseAlert}
+              className={`w-full py-3 px-5 rounded-xl text-xs font-black transition-all cursor-pointer shadow-md select-none active:scale-98 ${
+                alertConfig.type === 'success' ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-100' :
+                alertConfig.type === 'error' ? 'bg-rose-600 hover:bg-rose-700 text-white shadow-rose-100' :
+                alertConfig.type === 'warning' ? 'bg-amber-500 hover:bg-amber-600 text-white shadow-amber-100' :
+                'bg-teal-600 hover:bg-teal-700 text-white shadow-teal-100'
+              }`}
+            >
+              حسناً، فهمت
+            </button>
           </div>
         </div>
       )}

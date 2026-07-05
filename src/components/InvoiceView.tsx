@@ -1246,6 +1246,12 @@ https://almhaseb.vercel.app/`;
                     alert('عذراً، رقم الصنف أو الباركود هذا مسجل مسبقاً لصنف آخر.');
                     return;
                   }
+                  const costValue = Number(newSelectorItemCost) || 0;
+                  const priceValue = Number(newSelectorItemPrice) || 0;
+                  if (costValue > priceValue) {
+                    alert('عذراً! لا يمكن الحفظ لأن سعر الشراء (رأس المال) أعلى من سعر البيع المقترح (المبيع)، مما يعني حدوث خسارة على هذا الصنف. يرجى تعديل الأسعار أولاً لتجنب تسجيل خسائر.');
+                    return;
+                  }
                   if (onAddItem) {
                     const created = onAddItem({
                       code: newSelectorItemCode,
