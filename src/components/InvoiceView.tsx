@@ -36,6 +36,11 @@ interface InvoiceViewProps {
   onUpdateStock: (itemId: string, newStock: number) => void;
   onUpdatePartyBalance: (partyType: 'customer' | 'supplier', partyId: string, amountChange: number) => void;
   initialInvoiceType: 'sale' | 'purchase';
+  onSaveInvoice?: (
+    newTx: Transaction,
+    stockChanges: { itemId: string; newStock: number }[],
+    partyBalanceChange?: { partyType: 'customer' | 'supplier'; partyId: string; amountChange: number }
+  ) => void;
 }
 
 interface CartItem {
@@ -55,7 +60,8 @@ export default function InvoiceView({
   onAddTransaction,
   onUpdateStock,
   onUpdatePartyBalance,
-  initialInvoiceType
+  initialInvoiceType,
+  onSaveInvoice
 }: InvoiceViewProps) {
   // Navigation states
   const [invoiceType, setInvoiceType] = useState<'sale' | 'purchase'>(initialInvoiceType);
@@ -424,25 +430,40 @@ export default function InvoiceView({
     };
 
     // 2. Adjust Stock levels
+    const stockChanges: { itemId: string; newStock: number }[] = [];
     cart.forEach((it) => {
       const item = items.find((i) => i.id === it.itemId);
       if (item) {
         const stockDiff = invoiceType === 'sale' ? -it.qty : it.qty;
-        onUpdateStock(it.itemId, Math.max(0, item.stock + stockDiff));
+        stockChanges.push({
+          itemId: it.itemId,
+          newStock: Math.max(0, item.stock + stockDiff)
+        });
       }
     });
 
-    // 3. Update party balances for credit transactions
-    if (selectedPartyId && creditAmount > 0) {
-      onUpdatePartyBalance(
-        invoiceType === 'sale' ? 'customer' : 'supplier',
-        selectedPartyId,
-        creditAmount
-      );
-    }
+    const partyBalanceChange = selectedPartyId && creditAmount > 0 ? {
+      partyType: (invoiceType === 'sale' ? 'customer' : 'supplier') as 'customer' | 'supplier',
+      partyId: selectedPartyId,
+      amountChange: creditAmount
+    } : undefined;
 
-    // 4. Save to db
-    onAddTransaction(newTx);
+    if (onSaveInvoice) {
+      onSaveInvoice(newTx, stockChanges, partyBalanceChange);
+    } else {
+      // Fallback
+      stockChanges.forEach((sc) => {
+        onUpdateStock(sc.itemId, sc.newStock);
+      });
+      if (partyBalanceChange) {
+        onUpdatePartyBalance(
+          partyBalanceChange.partyType,
+          partyBalanceChange.partyId,
+          partyBalanceChange.amountChange
+        );
+      }
+      onAddTransaction(newTx);
+    }
 
     // Reset and exit
     setIsFinalizerOpen(false);

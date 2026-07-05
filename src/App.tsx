@@ -100,6 +100,52 @@ export default function App() {
     persistState(items, customers, suppliers, updatedTxs, config);
   };
 
+  const handleCompleteInvoiceSave = (
+    newTx: Transaction,
+    stockChanges: { itemId: string; newStock: number }[],
+    partyBalanceChange?: { partyType: 'customer' | 'supplier'; partyId: string; amountChange: number }
+  ) => {
+    const updatedTxs = [newTx, ...transactions];
+    setTransactions(updatedTxs);
+
+    let updatedItems = [...items];
+    if (stockChanges && stockChanges.length > 0) {
+      const stockMap = new Map(stockChanges.map((sc) => [sc.itemId, sc.newStock]));
+      updatedItems = items.map((it) => {
+        if (stockMap.has(it.id)) {
+          return { ...it, stock: stockMap.get(it.id)! };
+        }
+        return it;
+      });
+      setItems(updatedItems);
+    }
+
+    let updatedCustomers = [...customers];
+    let updatedSuppliers = [...suppliers];
+    if (partyBalanceChange) {
+      const { partyType, partyId, amountChange } = partyBalanceChange;
+      if (partyType === 'customer') {
+        updatedCustomers = customers.map((c) => {
+          if (c.id === partyId) {
+            return { ...c, balance: c.balance + amountChange };
+          }
+          return c;
+        });
+        setCustomers(updatedCustomers);
+      } else {
+        updatedSuppliers = suppliers.map((s) => {
+          if (s.id === partyId) {
+            return { ...s, balance: s.balance + amountChange };
+          }
+          return s;
+        });
+        setSuppliers(updatedSuppliers);
+      }
+    }
+
+    persistState(updatedItems, updatedCustomers, updatedSuppliers, updatedTxs, config);
+  };
+
   const handleUpdateStock = (itemId: string, newStock: number) => {
     const updatedItems = items.map((it) => {
       if (it.id === itemId) {
@@ -293,6 +339,7 @@ export default function App() {
             onAddTransaction={handleAddTransaction}
             onUpdateStock={handleUpdateStock}
             onUpdatePartyBalance={handleUpdatePartyBalance}
+            onSaveInvoice={handleCompleteInvoiceSave}
             initialInvoiceType="sale"
           />
         );
@@ -306,6 +353,7 @@ export default function App() {
             onAddTransaction={handleAddTransaction}
             onUpdateStock={handleUpdateStock}
             onUpdatePartyBalance={handleUpdatePartyBalance}
+            onSaveInvoice={handleCompleteInvoiceSave}
             initialInvoiceType="purchase"
           />
         );
@@ -671,8 +719,7 @@ export default function App() {
                   return;
                 }
 
-                handleUpdateStock(itemId, item.stock + stockChange);
-                handleAddTransaction(returnTx);
+                handleCompleteInvoiceSave(returnTx, [{ itemId, newStock: item.stock + stockChange }]);
                 alert('تم ترحيل المرتجع بنجاح وتحديث الصندوق وكميات الرفوف!');
                 setActiveModal(null);
               }}
