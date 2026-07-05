@@ -301,7 +301,7 @@ export default function InvoiceView({
   };
 
   // Handle adding active item from search selector to cart
-  const handleAddItemFromSelector = (keepOpen: boolean) => {
+  const handleAddItemFromSelector = async (keepOpen: boolean) => {
     if (!activeSelectorItem) return;
     const qty = parseFloat(selectorQty) || 0;
     const price = parseFloat(selectorPrice) || 0;
@@ -313,9 +313,9 @@ export default function InvoiceView({
 
     // If sale, warn if stock is insufficient
     if (invoiceType === 'sale' && activeSelectorItem.stock < qty) {
-      const confirmProceed = window.confirm(
-        `تنبيه: الكمية المطلوبة (${qty}) تتجاوز المتوفر في المستودع (${activeSelectorItem.stock}). هل تريد المتابعة على أي حال؟`
-      );
+      const confirmProceed = (window as any).customConfirm
+        ? await (window as any).customConfirm(`تنبيه: الكمية المطلوبة (${qty}) تتجاوز المتوفر في المستودع (${activeSelectorItem.stock}). هل تريد المتابعة على أي حال؟`, 'كمية غير كافية بالمخزون')
+        : window.confirm(`تنبيه: الكمية المطلوبة (${qty}) تتجاوز المتوفر في المستودع (${activeSelectorItem.stock}). هل تريد المتابعة على أي حال؟`);
       if (!confirmProceed) return;
     }
 
@@ -531,7 +531,7 @@ export default function InvoiceView({
     const netAmount = tx.amount;
     const subTotalVal = netAmount + discountVal;
 
-    const msg = `*المحاسب المحترف - ${typeText}* 🧾
+    const msg = `*العزيز للمحاسبة - ${typeText}* 🧾
 ----------------------------------------
 *رقم الفاتورة:* ${numberText}
 *التاريخ:* ${dateStr}
@@ -545,7 +545,7 @@ ${itemsText}----------------------------------------
 *الصافي المطلوب:* ${formatCurrency(netAmount)}
 *المسدد نقداً:* ${formatCurrency(tx.cashPaid || 0)}
 
-*برنامج المحاسب المحترف* 📱:
+*برنامج العزيز للمحاسبة* 📱:
 https://almhaseb.vercel.app/`;
 
     return msg;
@@ -1985,7 +1985,7 @@ https://almhaseb.vercel.app/`;
                 <Share2 className="h-7 w-7" />
               </div>
               <h3 className="text-base font-black text-slate-800">
-                المحاسب المحترف:
+                العزيز للمحاسبة:
               </h3>
               <p className="text-xs text-slate-500 font-bold mt-1">
                 جاهز لمشاركة الفاتورة مع العميل عبر المنصات:
@@ -2016,7 +2016,7 @@ https://almhaseb.vercel.app/`;
                 <button
                   onClick={() => {
                     const text = generateShareText(activeShareInvoice);
-                    const subject = activeShareInvoice.type === 'sale' ? 'فاتورة مبيعات - المحاسب المحترف' : 'فاتورة مشتريات - المحاسب المحترف';
+                    const subject = activeShareInvoice.type === 'sale' ? 'فاتورة مبيعات - العزيز للمحاسبة' : 'فاتورة مشتريات - العزيز للمحاسبة';
                     const url = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text)}`;
                     window.open(url, '_blank');
                   }}

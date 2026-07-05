@@ -85,7 +85,7 @@ export default function Sidebar({
               <Layers className="h-7 w-7 text-emerald-300" />
             </div>
             <div>
-              <h2 className="font-bold text-xl tracking-tight">المحاسب المحترف</h2>
+              <h2 className="font-bold text-xl tracking-tight">العزيز للمحاسبة</h2>
               <p className="text-xs text-emerald-200">نظام إدارة الحسابات وجرد المخازن</p>
             </div>
           </div>

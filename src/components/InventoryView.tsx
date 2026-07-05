@@ -105,8 +105,10 @@ export default function InventoryView({
     }));
   };
 
-  const applyAudit = () => {
-    const confirmed = window.confirm('هل أنت متأكد من تطبيق فروقات جرد البضائع وتعديل الكميات الحالية؟');
+  const applyAudit = async () => {
+    const confirmed = (window as any).customConfirm
+      ? await (window as any).customConfirm('هل أنت متأكد من تطبيق فروقات جرد البضائع وتعديل الكميات الحالية؟')
+      : window.confirm('هل أنت متأكد من تطبيق فروقات جرد البضائع وتعديل الكميات الحالية؟');
     if (!confirmed) return;
 
     Object.entries(auditQuantities).forEach(([itemId, qty]) => {

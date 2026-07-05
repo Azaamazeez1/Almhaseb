@@ -40,7 +40,7 @@ export default function App() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [config, setConfig] = useState<AppConfig>({
-    appName: 'برنامج المحاسبة وجرد البضائع',
+    appName: 'العزيز للمحاسبة',
     currency: 'USD',
     financialYear: '2026',
     thermalPrinterWidth: '80mm'
@@ -105,6 +105,13 @@ export default function App() {
     type?: 'success' | 'warning' | 'info' | 'error';
   } | null>(null);
 
+  const [confirmConfig, setConfirmConfig] = useState<{
+    message: string;
+    isOpen: boolean;
+    title?: string;
+    resolve?: (value: boolean) => void;
+  } | null>(null);
+
   useEffect(() => {
     window.alert = (message: string) => {
       let type: 'success' | 'warning' | 'info' | 'error' = 'info';
@@ -138,6 +145,20 @@ export default function App() {
         isOpen: true,
         title: type === 'success' ? 'تمت العملية بنجاح' : (type === 'error' ? 'تنبيه أو خطأ' : (type === 'warning' ? 'تنبيه هـام' : 'إشعار النظام')),
         type
+      });
+    };
+
+    (window as any).customConfirm = (message: string, title = 'تأكيد العملية') => {
+      return new Promise<boolean>((resolve) => {
+        setConfirmConfig({
+          message,
+          isOpen: true,
+          title,
+          resolve: (val) => {
+            resolve(val);
+            setConfirmConfig(null);
+          }
+        });
       });
     };
   }, []);
@@ -328,8 +349,10 @@ export default function App() {
   };
 
   // Reset System Data (تصفير البرنامج للبدء من الصفر)
-  const handleResetSystem = () => {
-    const confirm = window.confirm('تحذير شديد: هل أنت متأكد من مسح جميع الفواتير والمواد والحسابات والبدء ببرنامج فارغ؟ لا يمكن التراجع عن هذا الإجراء.');
+  const handleResetSystem = async () => {
+    const confirm = (window as any).customConfirm
+      ? await (window as any).customConfirm('تحذير شديد: هل أنت متأكد من مسح جميع الفواتير والمواد والحسابات والبدء ببرنامج فارغ؟ لا يمكن التراجع عن هذا الإجراء.', 'تصفير بيانات النظام')
+      : window.confirm('تحذير شديد: هل أنت متأكد من مسح جميع الفواتير والمواد والحسابات والبدء ببرنامج فارغ؟ لا يمكن التراجع عن هذا الإجراء.');
     if (!confirm) return;
 
     localStorage.clear();
@@ -501,7 +524,7 @@ export default function App() {
 
             <div className="flex items-center gap-2">
               <Layers3 className="h-6 w-6 text-emerald-300" />
-              <h1 className="font-bold text-lg tracking-wide hidden sm:block">برنامج المحاسب المحترف</h1>
+              <h1 className="font-bold text-lg tracking-wide hidden sm:block">العزيز للمحاسبة</h1>
             </div>
           </div>
 
@@ -988,6 +1011,46 @@ export default function App() {
             >
               حسناً، فهمت
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Custom Beautified Confirmation Modal */}
+      {confirmConfig && confirmConfig.isOpen && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-200" dir="rtl">
+          <div className="bg-white rounded-[24px] max-w-sm w-full p-6 shadow-2xl border border-slate-100 text-center animate-in fade-in zoom-in-95 duration-250 flex flex-col items-center">
+            {/* Visual Warning Icon */}
+            <div className="w-14 h-14 rounded-full bg-amber-50 text-amber-500 flex items-center justify-center mb-4">
+              <AlertTriangle className="h-7 w-7" />
+            </div>
+
+            {/* Title */}
+            <h3 className="font-black text-sm text-slate-800 mb-2">
+              {confirmConfig.title}
+            </h3>
+
+            {/* Message Body */}
+            <p className="text-xs font-bold text-slate-600 leading-relaxed mb-6 whitespace-pre-line text-center max-w-[280px]">
+              {confirmConfig.message}
+            </p>
+
+            {/* Actions: Confirm / Cancel Buttons */}
+            <div className="flex gap-3 w-full">
+              <button
+                type="button"
+                onClick={() => confirmConfig.resolve?.(true)}
+                className="flex-1 py-3 px-5 rounded-xl text-xs font-black bg-teal-600 hover:bg-teal-700 text-white shadow-md shadow-teal-100 transition-all cursor-pointer select-none active:scale-98"
+              >
+                حسناً، متابعة
+              </button>
+              <button
+                type="button"
+                onClick={() => confirmConfig.resolve?.(false)}
+                className="flex-1 py-3 px-5 rounded-xl text-xs font-black bg-slate-100 hover:bg-slate-200 text-slate-600 transition-all cursor-pointer select-none active:scale-98"
+              >
+                إلغاء الإجراء
+              </button>
+            </div>
           </div>
         </div>
       )}
