@@ -23,7 +23,7 @@ interface InventoryViewProps {
   onAddItem: (item: Omit<Item, 'id'>) => void;
   onUpdateStock: (itemId: string, newStock: number) => void;
   onUpdateItem: (updatedItem: Item) => void;
-  onOpenAddModal: () => void;
+  onOpenAddModal: (prefillName?: string) => void;
 }
 
 export default function InventoryView({
@@ -439,8 +439,18 @@ export default function InventoryView({
 
               {filteredItems.length === 0 && (
                 <tr>
-                  <td colSpan={auditMode ? 11 : 9} className="p-8 text-center text-gray-400 font-medium">
-                    لا توجد أصناف مطابقة لعملية البحث.
+                  <td colSpan={auditMode ? 11 : 9} className="p-10 text-center text-gray-400 font-medium">
+                    <div className="flex flex-col items-center justify-center gap-3">
+                      <span>لا توجد أصناف مطابقة لعملية البحث.</span>
+                      <button
+                        type="button"
+                        onClick={() => onOpenAddModal(searchTerm)}
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-2xl text-xs font-black shadow-md flex items-center gap-1.5 cursor-pointer transition-colors mt-2"
+                      >
+                        <Plus className="h-4 w-4" />
+                        <span>إضافة صنف جديد باسم &quot;{searchTerm}&quot;</span>
+                      </button>
+                    </div>
                   </td>
                 </tr>
               )}

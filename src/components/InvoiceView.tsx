@@ -38,6 +38,7 @@ interface InvoiceViewProps {
   onUpdateStock: (itemId: string, newStock: number) => void;
   onUpdatePartyBalance: (partyType: 'customer' | 'supplier', partyId: string, amountChange: number) => void;
   initialInvoiceType: 'sale' | 'purchase';
+  onAddItem?: (item: Omit<Item, 'id'>) => Item;
   onSaveInvoice?: (
     newTx: Transaction,
     stockChanges: { itemId: string; newStock: number }[],
@@ -63,6 +64,7 @@ export default function InvoiceView({
   onUpdateStock,
   onUpdatePartyBalance,
   initialInvoiceType,
+  onAddItem,
   onSaveInvoice
 }: InvoiceViewProps) {
   // Navigation states
@@ -80,6 +82,14 @@ export default function InvoiceView({
   const [isItemSelectorOpen, setIsItemSelectorOpen] = useState(false);
   const [itemSearchTerm, setItemSearchTerm] = useState('');
   const [activeSelectorItem, setActiveSelectorItem] = useState<Item | null>(null);
+
+  // Inline Item Creation form states (inside the Selector modal)
+  const [isAddingNewItem, setIsAddingNewItem] = useState(false);
+  const [newSelectorItemName, setNewSelectorItemName] = useState('');
+  const [newSelectorItemCode, setNewSelectorItemCode] = useState('');
+  const [newSelectorItemCost, setNewSelectorItemCost] = useState('0');
+  const [newSelectorItemPrice, setNewSelectorItemPrice] = useState('0');
+  const [newSelectorItemUnit, setNewSelectorItemUnit] = useState('حبة');
 
   // Selector form values
   const [selectorUnit, setSelectorUnit] = useState('حبة');
@@ -267,10 +277,16 @@ export default function InvoiceView({
       // Space - ignore
     } else {
       let newVal = currentVal;
-      if (currentVal === '0' || currentVal === '0.0') {
-        newVal = key;
+      if (key === '.') {
+        if (!currentVal.includes('.')) {
+          newVal = currentVal + '.';
+        }
       } else {
-        newVal = currentVal + key;
+        if (currentVal === '0') {
+          newVal = key; // If current value is 0, replace with clicked digit
+        } else {
+          newVal = currentVal + key;
+        }
       }
       if (activeSelectorField === 'qty') setSelectorQty(newVal);
       else setSelectorPrice(newVal);
@@ -1169,259 +1185,436 @@ https://almhaseb.vercel.app/`;
               <div className="flex justify-between items-center">
                 <span className="text-sm font-black text-slate-800 flex items-center gap-1.5">
                   <Sparkles className="h-4.5 w-4.5 text-[#4b8c82]" />
-                  <span>البحث السريع عن بضائع الأصناف وإضافتها</span>
+                  <span>{isAddingNewItem ? 'إنشاء صنف جديد وإضافته فوراً' : 'البحث السريع عن بضائع الأصناف وإضافتها'}</span>
                 </span>
-                <button
-                  onClick={() => {
-                    setIsItemSelectorOpen(false);
-                    setActiveSelectorItem(null);
-                  }}
-                  className="p-1.5 hover:bg-slate-100 rounded-xl text-slate-400 hover:text-slate-700 cursor-pointer"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
-
-              {/* Input wrapper with search & barcode icon */}
-              <div className="relative">
-                <Search className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4.5 w-4.5 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder="بداية الإسم أو الرقم أو نهاية الرقم..."
-                  value={itemSearchTerm}
-                  onChange={(e) => setItemSearchTerm(e.target.value)}
-                  className="w-full pl-12 pr-10 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs focus:outline-none focus:border-teal-600 focus:bg-white transition-all font-black text-right"
-                  autoFocus
-                />
-                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 font-mono">
-                  [Barcode]
-                </span>
-              </div>
-            </div>
-
-            {/* List of matching items */}
-            <div className="flex-1 overflow-y-auto my-4 border border-slate-100 rounded-2xl divide-y divide-slate-100 bg-slate-50/50">
-              {filteredItems.length === 0 ? (
-                <div className="p-8 text-center text-xs font-bold text-slate-400">
-                  لا توجد أصناف مطابقة للبحث
+                <div className="flex items-center gap-2">
+                  {!isAddingNewItem && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNewSelectorItemName(itemSearchTerm);
+                        setIsAddingNewItem(true);
+                      }}
+                      className="px-3 py-1.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200/50 rounded-xl text-[10px] font-black transition-colors cursor-pointer flex items-center gap-1 shrink-0"
+                      title="إضافة صنف جديد فوراً"
+                    >
+                      <Plus className="h-3 w-3" />
+                      <span>إضافة صنف جديد</span>
+                    </button>
+                  )}
+                  <button
+                    onClick={() => {
+                      setIsItemSelectorOpen(false);
+                      setActiveSelectorItem(null);
+                      setIsAddingNewItem(false);
+                    }}
+                    className="p-1.5 hover:bg-slate-100 rounded-xl text-slate-400 hover:text-slate-700 cursor-pointer"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
                 </div>
-              ) : (
-                filteredItems.map((item) => {
-                  const isSelected = activeSelectorItem?.id === item.id;
-                  return (
-                    <div key={item.id} className="transition-all">
-                      {/* Item row styled exactly like Screen 3 */}
-                      <div
-                        onClick={() => handleSelectSelectorItem(item)}
-                        className={`p-3.5 flex justify-between items-center cursor-pointer transition-colors ${
-                          isSelected ? 'bg-teal-50/60' : 'hover:bg-slate-100/50'
-                        }`}
-                      >
-                        {/* Right: Item details */}
-                        <div>
-                          <span className="text-xs font-black text-slate-800 block mb-0.5">{item.name}</span>
-                          <span className="text-[10px] text-slate-400 font-mono font-bold">كود: {item.code}</span>
-                        </div>
+              </div>
 
-                        {/* Left: Inventory and Price metrics */}
-                        <div className="flex items-center gap-4 text-center">
-                          <div className="text-right">
-                            <span className="text-[10px] text-slate-400 block font-bold">المخزون</span>
-                            <span className="text-xs font-bold text-slate-700 font-mono">
-                              {item.stock} {item.unit}
-                            </span>
-                          </div>
-                          <div className="text-right">
-                            <span className="text-[10px] text-slate-400 block font-bold">سعر البيع</span>
-                            <span className="text-xs font-black text-teal-700 font-mono">
-                              {formatCurrency(item.salePrice)}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Expanded entry form inline drawer exactly like Screen 4 */}
-                      {isSelected && (
-                        <div className="p-4 bg-white border-t border-b border-slate-150 space-y-4 animate-in slide-in-from-top-2 duration-200">
-                          {/* Unit, Qty, Price, Total Inputs row */}
-                          <div className="grid grid-cols-4 gap-2 text-center">
-                            {/* Unit Dropdown */}
-                            <div>
-                              <label className="block text-[9px] font-black text-slate-400 mb-1">وحدة القياس</label>
-                              <select
-                                value={selectorUnit}
-                                onChange={(e) => setSelectorUnit(e.target.value)}
-                                className="w-full px-1.5 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-black text-center focus:outline-none focus:border-teal-600"
-                              >
-                                <option value="حبة">حبة</option>
-                                <option value="كرتون">كرتون</option>
-                                <option value="كيس">كيس</option>
-                                <option value="متر">متر</option>
-                                <option value="لتر">لتر</option>
-                              </select>
-                            </div>
-
-                            {/* Qty Input field */}
-                            <div
-                              onClick={() => setActiveSelectorField('qty')}
-                              className={`p-1.5 rounded-lg border cursor-pointer ${
-                                activeSelectorField === 'qty' ? 'border-teal-600 bg-teal-50/20' : 'border-slate-200 bg-slate-50'
-                              }`}
-                            >
-                              <span className="block text-[9px] font-black text-slate-400 mb-0.5">الكمية</span>
-                              <input
-                                type="text"
-                                readOnly
-                                value={selectorQty}
-                                className="w-full bg-transparent text-center text-xs font-black font-sans focus:outline-none"
-                              />
-                            </div>
-
-                            {/* Price Input field */}
-                            <div
-                              onClick={() => setActiveSelectorField('price')}
-                              className={`p-1.5 rounded-lg border cursor-pointer ${
-                                activeSelectorField === 'price' ? 'border-teal-600 bg-teal-50/20' : 'border-slate-200 bg-slate-50'
-                              }`}
-                            >
-                              <span className="block text-[9px] font-black text-slate-400 mb-0.5">السعر</span>
-                              <input
-                                type="text"
-                                readOnly
-                                value={selectorPrice}
-                                className="w-full bg-transparent text-center text-xs font-black font-sans focus:outline-none text-[#4b8c82]"
-                              />
-                            </div>
-
-                            {/* Total calculated field */}
-                            <div className="p-1.5 rounded-lg border border-slate-100 bg-slate-100">
-                              <span className="block text-[9px] font-black text-slate-400 mb-0.5">الإجمالي</span>
-                              <span className="block text-xs font-black text-teal-800 font-mono mt-1">
-                                {formatCurrency(parseFloat(selectorTotal) || 0)}
-                              </span>
-                            </div>
-                          </div>
-
-                          {/* Inline helper buttons representing Screen 4 Quick Qty bar */}
-                          <div className="flex flex-wrap gap-1.5 justify-center py-1">
-                            <button
-                              onClick={() => adjustSelectorQty(1)}
-                              className="px-3 py-1.5 bg-[#4b8c82]/10 hover:bg-[#4b8c82]/20 text-[#4b8c82] rounded-lg text-xs font-bold cursor-pointer"
-                            >
-                              + 1 حبة
-                            </button>
-                            <button
-                              onClick={() => setSelectorQty('12')}
-                              className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold cursor-pointer"
-                            >
-                              درزن (12)
-                            </button>
-                            <button
-                              onClick={() => setSelectorQty('15')}
-                              className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold cursor-pointer"
-                            >
-                              شد (15)
-                            </button>
-                            <button
-                              onClick={() => setSelectorQty('13')}
-                              className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold cursor-pointer"
-                            >
-                              كرتون (13)
-                            </button>
-                          </div>
-
-                          {/* POS touch numpad selector */}
-                          <div className="grid grid-cols-4 gap-1.5 max-w-xs mx-auto text-center font-bold">
-                            {['1', '2', '3', '-'].map((key) => (
-                              <button
-                                key={key}
-                                type="button"
-                                onClick={() => handleKeypadPress(key)}
-                                className="py-2.5 bg-slate-100 hover:bg-slate-200 rounded-xl text-xs text-slate-700 active:scale-95 transition-all font-mono"
-                              >
-                                {key}
-                              </button>
-                            ))}
-                            {['4', '5', '6', ','].map((key) => (
-                              <button
-                                key={key}
-                                type="button"
-                                onClick={() => handleKeypadPress(key)}
-                                className="py-2.5 bg-slate-100 hover:bg-slate-200 rounded-xl text-xs text-slate-700 active:scale-95 transition-all font-mono"
-                              >
-                                {key}
-                              </button>
-                            ))}
-                            {['7', '8', '9', '⌫'].map((key) => (
-                              <button
-                                key={key}
-                                type="button"
-                                onClick={() => handleKeypadPress(key)}
-                                className={`py-2.5 rounded-xl text-xs active:scale-95 transition-all font-mono ${
-                                  key === '⌫' ? 'bg-rose-100 text-rose-700 text-sm' : 'bg-slate-100 text-slate-700'
-                                }`}
-                              >
-                                {key}
-                              </button>
-                            ))}
-                            {['0', '.', '␣', '⏎'].map((key) => (
-                              <button
-                                key={key}
-                                type="button"
-                                onClick={() => handleKeypadPress(key)}
-                                className={`py-2.5 rounded-xl text-xs active:scale-95 transition-all ${
-                                  key === '⏎' ? 'bg-teal-600 text-white font-black' : 'bg-slate-100 text-slate-700 font-mono'
-                                }`}
-                              >
-                                {key}
-                              </button>
-                            ))}
-                          </div>
-
-                          {/* Action Buttons for selector expanded row */}
-                          <div className="flex gap-2 justify-end pt-3 border-t border-slate-100">
-                            <button
-                              onClick={() => {
-                                setActiveSelectorItem(null);
-                                setItemSearchTerm('');
-                              }}
-                              className="px-4 py-2 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold cursor-pointer hover:bg-slate-200"
-                            >
-                              إلغاء
-                            </button>
-                            <button
-                              onClick={() => handleAddItemFromSelector(true)} // save & add more
-                              className="px-4 py-2 bg-[#4b8c82]/10 hover:bg-[#4b8c82]/20 text-[#4b8c82] rounded-xl text-xs font-black cursor-pointer"
-                            >
-                              حفظ وإضافة بضائع أخرى
-                            </button>
-                            <button
-                              onClick={() => handleAddItemFromSelector(false)} // save & close
-                              className="px-5 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-black cursor-pointer shadow-md"
-                            >
-                              حفظ وإغلاق الصنف
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })
+              {!isAddingNewItem && (
+                <div className="relative">
+                  <Search className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4.5 w-4.5 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="بداية الإسم أو الرقم أو نهاية الرقم..."
+                    value={itemSearchTerm}
+                    onChange={(e) => setItemSearchTerm(e.target.value)}
+                    className="w-full pl-12 pr-10 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs focus:outline-none focus:border-teal-600 focus:bg-white transition-all font-black text-right"
+                    autoFocus
+                  />
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 font-mono">
+                    [Barcode]
+                  </span>
+                </div>
               )}
             </div>
 
-            {/* Bottom Modal Actions */}
-            <div className="flex justify-end pt-4 border-t border-slate-100">
-              <button
-                onClick={() => {
-                  setIsItemSelectorOpen(false);
-                  setActiveSelectorItem(null);
+            {isAddingNewItem ? (
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (!newSelectorItemName || !newSelectorItemCode) {
+                    alert('يرجى ملء جميع الحقول المطلوبة.');
+                    return;
+                  }
+                  const duplicateCode = items.some((it) => it.code === newSelectorItemCode);
+                  if (duplicateCode) {
+                    alert('عذراً، رقم الصنف أو الباركود هذا مسجل مسبقاً لصنف آخر.');
+                    return;
+                  }
+                  if (onAddItem) {
+                    const created = onAddItem({
+                      code: newSelectorItemCode,
+                      name: newSelectorItemName,
+                      stock: 0,
+                      unit: newSelectorItemUnit,
+                      unitCost: Number(newSelectorItemCost) || 0,
+                      salePrice: Number(newSelectorItemPrice) || 0,
+                      currency: 'YER',
+                      lastPurchasePrice: Number(newSelectorItemCost) || 0
+                    });
+
+                    // Automatically select this new item in the drawer
+                    setActiveSelectorItem(created);
+                    setSelectorUnit(created.unit || 'حبة');
+                    setSelectorPrice(created.salePrice.toString());
+                    setSelectorQty('1');
+                    setSelectorTotal(created.salePrice.toString());
+                    setActiveSelectorField('qty');
+
+                    // Reset form fields
+                    setNewSelectorItemName('');
+                    setNewSelectorItemCode('');
+                    setNewSelectorItemCost('0');
+                    setNewSelectorItemPrice('0');
+                    setNewSelectorItemUnit('حبة');
+                    setIsAddingNewItem(false);
+                    alert('تمت إضافة الصنف الجديد بنجاح واختياره تلقائياً!');
+                  }
                 }}
-                className="px-6 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold cursor-pointer"
+                className="space-y-4 my-4 p-5 border border-emerald-150 bg-emerald-50/10 rounded-2xl text-right overflow-y-auto"
               >
-                إغلاق البحث المباشر
-              </button>
-            </div>
+                <div>
+                  <label className="block text-[10px] font-black text-slate-500 mb-1">اسم الصنف (السلعة/المادة) *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="مثال: زيت فرامل شل أصلي"
+                    value={newSelectorItemName}
+                    onChange={(e) => setNewSelectorItemName(e.target.value)}
+                    className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-emerald-600 focus:bg-white text-right font-bold"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[10px] font-black text-slate-500 mb-1">الباركود / الكود الدولي *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="مثال: 554"
+                      value={newSelectorItemCode}
+                      onChange={(e) => setNewSelectorItemCode(e.target.value)}
+                      className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-center font-mono focus:outline-none focus:border-emerald-600 focus:bg-white font-bold"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-black text-slate-500 mb-1">وحدة القياس</label>
+                    <select
+                      value={newSelectorItemUnit}
+                      onChange={(e) => setNewSelectorItemUnit(e.target.value)}
+                      className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-emerald-600 focus:bg-white font-bold"
+                    >
+                      <option value="حبة">حبة</option>
+                      <option value="كرتون">كرتون</option>
+                      <option value="كيس">كيس</option>
+                      <option value="متر">متر</option>
+                      <option value="لتر">لتر</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[10px] font-black text-slate-500 mb-1">تكلفة الشراء الأساسية (ريال)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={newSelectorItemCost}
+                      onChange={(e) => setNewSelectorItemCost(e.target.value)}
+                      className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-center font-mono focus:outline-none focus:border-emerald-600 focus:bg-white font-bold"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-black text-slate-500 mb-1">سعر البيع المقترح (ريال)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={newSelectorItemPrice}
+                      onChange={(e) => setNewSelectorItemPrice(e.target.value)}
+                      className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-center font-mono focus:outline-none focus:border-emerald-600 focus:bg-white font-bold"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                  <button
+                    type="button"
+                    onClick={() => setIsAddingNewItem(false)}
+                    className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold"
+                  >
+                    إلغاء والتراجع
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black shadow-md"
+                  >
+                    حفظ الصنف وتحديده
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <>
+                {/* List of matching items */}
+                <div className="flex-1 overflow-y-auto my-4 border border-slate-100 rounded-2xl divide-y divide-slate-100 bg-slate-50/50">
+                  {filteredItems.length === 0 ? (
+                    <div className="p-8 text-center text-xs font-bold text-slate-400 flex flex-col items-center gap-3">
+                      <span>لا توجد أصناف مطابقة للبحث</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setNewSelectorItemName(itemSearchTerm);
+                          setIsAddingNewItem(true);
+                        }}
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-sm flex items-center gap-1.5 cursor-pointer transition-colors mx-auto"
+                      >
+                        <Plus className="h-4 w-4" />
+                        <span>إضافة صنف جديد باسم &quot;{itemSearchTerm}&quot;</span>
+                      </button>
+                    </div>
+                  ) : (
+                    filteredItems.map((item) => {
+                      const isSelected = activeSelectorItem?.id === item.id;
+                      return (
+                        <div key={item.id} className="transition-all">
+                          {/* Item row styled exactly like Screen 3 */}
+                          <div
+                            onClick={() => handleSelectSelectorItem(item)}
+                            className={`p-3.5 flex justify-between items-center cursor-pointer transition-colors ${
+                              isSelected ? 'bg-teal-50/60' : 'hover:bg-slate-100/50'
+                            }`}
+                          >
+                            {/* Right: Item details */}
+                            <div>
+                              <span className="text-xs font-black text-slate-800 block mb-0.5">{item.name}</span>
+                              <span className="text-[10px] text-slate-400 font-mono font-bold">كود: {item.code}</span>
+                            </div>
+
+                            {/* Left: Inventory and Price metrics */}
+                            <div className="flex items-center gap-4 text-center">
+                              <div className="text-right">
+                                <span className="text-[10px] text-slate-400 block font-bold">المخزون</span>
+                                <span className="text-xs font-bold text-slate-700 font-mono">
+                                  {(() => {
+                                    const cartItem = cart.find((c) => c.itemId === item.id);
+                                    const currentCartQty = cartItem ? cartItem.qty : 0;
+                                    const displayedStock = invoiceType === 'sale' 
+                                      ? Math.max(0, item.stock - currentCartQty) 
+                                      : item.stock + currentCartQty;
+                                    return (
+                                      <>
+                                        <span>{displayedStock} {item.unit}</span>
+                                        {currentCartQty > 0 && (
+                                          <span className="text-[9px] text-rose-500 font-black block leading-none mt-0.5">
+                                            ({invoiceType === 'sale' ? '-' : '+'}{currentCartQty} بالسلة)
+                                          </span>
+                                        )}
+                                      </>
+                                    );
+                                  })()}
+                                </span>
+                              </div>
+                              <div className="text-right">
+                                <span className="text-[10px] text-slate-400 block font-bold">سعر البيع</span>
+                                <span className="text-xs font-black text-teal-700 font-mono">
+                                  {formatCurrency(item.salePrice)}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Expanded entry form inline drawer exactly like Screen 4 */}
+                          {isSelected && (
+                            <div className="p-4 bg-white border-t border-b border-slate-150 space-y-4 animate-in slide-in-from-top-2 duration-200">
+                              {/* Unit, Qty, Price, Total Inputs row */}
+                              <div className="grid grid-cols-4 gap-2 text-center">
+                                {/* Unit Dropdown */}
+                                <div>
+                                  <label className="block text-[9px] font-black text-slate-400 mb-1">وحدة القياس</label>
+                                  <select
+                                    value={selectorUnit}
+                                    onChange={(e) => setSelectorUnit(e.target.value)}
+                                    className="w-full px-1.5 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-black text-center focus:outline-none focus:border-teal-600"
+                                  >
+                                    <option value="حبة">حبة</option>
+                                    <option value="كرتون">كرتون</option>
+                                    <option value="كيس">كيس</option>
+                                    <option value="متر">متر</option>
+                                    <option value="لتر">لتر</option>
+                                  </select>
+                                </div>
+
+                                {/* Qty Input field */}
+                                <div
+                                  onClick={() => setActiveSelectorField('qty')}
+                                  className={`p-1.5 rounded-lg border cursor-pointer ${
+                                    activeSelectorField === 'qty' ? 'border-teal-600 bg-teal-50/20' : 'border-slate-200 bg-slate-50'
+                                  }`}
+                                >
+                                  <span className="block text-[9px] font-black text-slate-400 mb-0.5">الكمية</span>
+                                  <input
+                                    type="text"
+                                    readOnly
+                                    value={selectorQty}
+                                    className="w-full bg-transparent text-center text-xs font-black font-sans focus:outline-none"
+                                  />
+                                </div>
+
+                                {/* Price Input field */}
+                                <div
+                                  onClick={() => setActiveSelectorField('price')}
+                                  className={`p-1.5 rounded-lg border cursor-pointer ${
+                                    activeSelectorField === 'price' ? 'border-teal-600 bg-teal-50/20' : 'border-slate-200 bg-slate-50'
+                                  }`}
+                                >
+                                  <span className="block text-[9px] font-black text-slate-400 mb-0.5">السعر</span>
+                                  <input
+                                    type="text"
+                                    readOnly
+                                    value={selectorPrice}
+                                    className="w-full bg-transparent text-center text-xs font-black font-sans focus:outline-none text-[#4b8c82]"
+                                  />
+                                </div>
+
+                                {/* Total calculated field */}
+                                <div className="p-1.5 rounded-lg border border-slate-100 bg-slate-100">
+                                  <span className="block text-[9px] font-black text-slate-400 mb-0.5">الإجمالي</span>
+                                  <span className="block text-xs font-black text-teal-800 font-mono mt-1">
+                                    {formatCurrency(parseFloat(selectorTotal) || 0)}
+                                  </span>
+                                </div>
+                              </div>
+
+                              {/* Inline helper buttons representing Screen 4 Quick Qty bar */}
+                              <div className="flex flex-wrap gap-1.5 justify-center py-1">
+                                <button
+                                  onClick={() => adjustSelectorQty(1)}
+                                  className="px-3 py-1.5 bg-[#4b8c82]/10 hover:bg-[#4b8c82]/20 text-[#4b8c82] rounded-lg text-xs font-bold cursor-pointer"
+                                >
+                                  + 1 حبة
+                                </button>
+                                <button
+                                  onClick={() => setSelectorQty('12')}
+                                  className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold cursor-pointer"
+                                >
+                                  درزن (12)
+                                </button>
+                                <button
+                                  onClick={() => setSelectorQty('15')}
+                                  className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold cursor-pointer"
+                                >
+                                  شد (15)
+                                </button>
+                                <button
+                                  onClick={() => setSelectorQty('13')}
+                                  className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold cursor-pointer"
+                                >
+                                  كرتون (13)
+                                </button>
+                              </div>
+
+                              {/* POS touch numpad selector */}
+                              <div className="grid grid-cols-4 gap-1.5 max-w-xs mx-auto text-center font-bold">
+                                {['1', '2', '3', '-'].map((key) => (
+                                  <button
+                                    key={key}
+                                    type="button"
+                                    onClick={() => handleKeypadPress(key)}
+                                    className="py-2.5 bg-slate-100 hover:bg-slate-200 rounded-xl text-xs text-slate-700 active:scale-95 transition-all font-mono"
+                                  >
+                                    {key}
+                                  </button>
+                                ))}
+                                {['4', '5', '6', ','].map((key) => (
+                                  <button
+                                    key={key}
+                                    type="button"
+                                    onClick={() => handleKeypadPress(key)}
+                                    className="py-2.5 bg-slate-100 hover:bg-slate-200 rounded-xl text-xs text-slate-700 active:scale-95 transition-all font-mono"
+                                  >
+                                    {key}
+                                  </button>
+                                ))}
+                                {['7', '8', '9', '⌫'].map((key) => (
+                                  <button
+                                    key={key}
+                                    type="button"
+                                    onClick={() => handleKeypadPress(key)}
+                                    className={`py-2.5 rounded-xl text-xs active:scale-95 transition-all font-mono ${
+                                      key === '⌫' ? 'bg-rose-100 text-rose-700 text-sm' : 'bg-slate-100 text-slate-700'
+                                    }`}
+                                  >
+                                    {key}
+                                  </button>
+                                ))}
+                                {['0', '.', '␣', '⏎'].map((key) => (
+                                  <button
+                                    key={key}
+                                    type="button"
+                                    onClick={() => handleKeypadPress(key)}
+                                    className={`py-2.5 rounded-xl text-xs active:scale-95 transition-all ${
+                                      key === '⏎' ? 'bg-teal-600 text-white font-black' : 'bg-slate-100 text-slate-700 font-mono'
+                                    }`}
+                                  >
+                                    {key}
+                                  </button>
+                                ))}
+                              </div>
+
+                              {/* Action Buttons for selector expanded row */}
+                              <div className="flex gap-2 justify-end pt-3 border-t border-slate-100">
+                                <button
+                                  onClick={() => {
+                                    setActiveSelectorItem(null);
+                                    setItemSearchTerm('');
+                                  }}
+                                  className="px-4 py-2 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold cursor-pointer hover:bg-slate-200"
+                                >
+                                  إلغاء
+                                </button>
+                                <button
+                                  onClick={() => handleAddItemFromSelector(true)} // save & add more
+                                  className="px-4 py-2 bg-[#4b8c82]/10 hover:bg-[#4b8c82]/20 text-[#4b8c82] rounded-xl text-xs font-black cursor-pointer"
+                                >
+                                  حفظ وإضافة بضائع أخرى
+                                </button>
+                                <button
+                                  onClick={() => handleAddItemFromSelector(false)} // save & close
+                                  className="px-5 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-black cursor-pointer shadow-md"
+                                >
+                                  حفظ وإغلاق الصنف
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+
+                {/* Bottom Modal Actions */}
+                <div className="flex justify-end pt-4 border-t border-slate-100">
+                  <button
+                    onClick={() => {
+                      setIsItemSelectorOpen(false);
+                      setActiveSelectorItem(null);
+                    }}
+                    className="px-6 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold cursor-pointer"
+                  >
+                    إغلاق البحث المباشر
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

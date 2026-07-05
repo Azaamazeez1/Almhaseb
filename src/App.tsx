@@ -189,6 +189,14 @@ export default function App() {
     }
   };
 
+  const handleAddItem = (it: Omit<Item, 'id'>) => {
+    const itemWithId = { ...it, id: `item-${Date.now()}` };
+    const updatedItems = [...items, itemWithId];
+    setItems(updatedItems);
+    persistState(updatedItems, customers, suppliers, transactions, config);
+    return itemWithId;
+  };
+
   // Natively Add item form submission
   const handleAddNewItemSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -203,8 +211,7 @@ export default function App() {
       return;
     }
 
-    const newItem: Item = {
-      id: `item-${Date.now()}`,
+    handleAddItem({
       code: newItemCode,
       name: newItemName,
       stock: 0, // Starts at 0, purchase invoices or stock audits will increase it
@@ -213,11 +220,7 @@ export default function App() {
       salePrice: newItemPrice,
       currency: config.currency,
       lastPurchasePrice: newItemCost
-    };
-
-    const updatedItems = [...items, newItem];
-    setItems(updatedItems);
-    persistState(updatedItems, customers, suppliers, transactions, config);
+    });
 
     // Reset fields
     setNewItemName('');
@@ -326,7 +329,12 @@ export default function App() {
             }}
             onUpdateStock={handleUpdateStock}
             onUpdateItem={handleUpdateItem}
-            onOpenAddModal={() => setActiveModal('item')}
+            onOpenAddModal={(prefillName) => {
+              if (prefillName) {
+                setNewItemName(prefillName);
+              }
+              setActiveModal('item');
+            }}
           />
         );
 
@@ -340,6 +348,7 @@ export default function App() {
             onUpdateStock={handleUpdateStock}
             onUpdatePartyBalance={handleUpdatePartyBalance}
             onSaveInvoice={handleCompleteInvoiceSave}
+            onAddItem={handleAddItem}
             initialInvoiceType="sale"
           />
         );
@@ -354,6 +363,7 @@ export default function App() {
             onUpdateStock={handleUpdateStock}
             onUpdatePartyBalance={handleUpdatePartyBalance}
             onSaveInvoice={handleCompleteInvoiceSave}
+            onAddItem={handleAddItem}
             initialInvoiceType="purchase"
           />
         );
