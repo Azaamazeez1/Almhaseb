@@ -23,7 +23,9 @@ import {
   Sparkles,
   ChevronRight,
   MoreVertical,
-  Maximize2
+  Maximize2,
+  Mail,
+  MessageCircle
 } from 'lucide-react';
 import { Item, Customer, Supplier, Transaction, TransactionType } from '../types';
 import { formatCurrency } from '../utils';
@@ -98,6 +100,11 @@ export default function InvoiceView({
   const [taxInputStr, setTaxInputStr] = useState('');
   const [taxPercentInputStr, setTaxPercentInputStr] = useState('');
   const [finalNotes, setFinalNotes] = useState('');
+
+  // Share Modal states
+  const [activeShareInvoice, setActiveShareInvoice] = useState<any | null>(null);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [dontShowSharePrompt, setDontShowSharePrompt] = useState(() => localStorage.getItem('dontShowSharePrompt') === 'true');
 
   // Daily Filter state - defaults to current day
   const [selectedDateFilter, setSelectedDateFilter] = useState(() => {
@@ -469,7 +476,96 @@ export default function InvoiceView({
     setIsFinalizerOpen(false);
     setShowCreator(false);
     resetCreator();
-    alert('تم حفظ وترحيل الفاتورة وتحديث المخزون بنجاح!');
+    
+    if (dontShowSharePrompt) {
+      alert('تم حفظ وترحيل الفاتورة وتحديث المخزون بنجاح!');
+    } else {
+      setActiveShareInvoice(newTx);
+      setIsShareModalOpen(true);
+    }
+  };
+
+  const generateShareText = (tx: any) => {
+    const isSale = tx.type === 'sale';
+    const typeText = isSale ? 'فاتورة مبيعات' : 'فاتورة مشتريات';
+    const numberText = tx.invoiceNumber || (tx.id === 'draft' ? 'مسودة' : tx.id?.slice(-6)) || 'مسودة';
+    
+    const dateObj = tx.date ? new Date(tx.date) : new Date();
+    const dateStr = dateObj.toLocaleDateString('ar-YE', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+    
+    const isCash = (tx.cashPaid || 0) > 0 && (tx.creditAmount || 0) === 0;
+    const isCredit = (tx.creditAmount || 0) > 0 && (tx.cashPaid || 0) === 0;
+    const payMode = isCash ? 'نقداً' : isCredit ? 'آجل' : 'جزئي آجل';
+    
+    const partyLabel = isSale ? 'العميل' : 'المورد';
+    const partyName = tx.partyName || (isSale ? 'نقداً - صندوق المبيعات الفورية' : 'صندوق المشتريات الفورية');
+
+    let itemsText = '';
+    if (tx.items && tx.items.length > 0) {
+      tx.items.forEach((it: any, index: number) => {
+        itemsText += `  ${index + 1}. ${it.itemName} - ${it.qty} حبة × ${formatCurrency(it.price)}\n`;
+      });
+    }
+
+    const discountVal = tx.discount || 0;
+    const netAmount = tx.amount;
+    const subTotalVal = netAmount + discountVal;
+
+    const msg = `*المحاسب المحترف - ${typeText}* 🧾
+----------------------------------------
+*رقم الفاتورة:* ${numberText}
+*التاريخ:* ${dateStr}
+*طريقة السداد:* ${payMode}
+*${partyLabel}:* ${partyName}
+
+*الأصناف والمبيعات:*
+${itemsText}----------------------------------------
+*المجموع الإجمالي:* ${formatCurrency(subTotalVal)}
+*الخصم الممنوح:* ${formatCurrency(discountVal)}
+*الصافي المطلوب:* ${formatCurrency(netAmount)}
+*المسدد نقداً:* ${formatCurrency(tx.cashPaid || 0)}
+
+*برنامج المحاسب المحترف* 📱:
+https://almhaseb.vercel.app/`;
+
+    return msg;
+  };
+
+  const handleShareDraft = () => {
+    if (cart.length === 0) {
+      alert('الرجاء إضافة أصناف للفاتورة أولاً قبل مشاركتها!');
+      return;
+    }
+    const partyName =
+      invoiceType === 'sale'
+        ? customers.find((c) => c.id === selectedPartyId)?.name
+        : suppliers.find((s) => s.id === selectedPartyId)?.name;
+
+    const cashPaid = paymentMode === 'cash' ? grandTotal : 0;
+    const creditAmount = paymentMode === 'credit' ? grandTotal : 0;
+
+    const draftTx = {
+      id: 'draft',
+      invoiceNumber: invoiceNumber || 'مسودة',
+      type: invoiceType,
+      date: new Date().toISOString(),
+      partyName: partyName,
+      amount: grandTotal,
+      discount: finalDiscount,
+      cashPaid: cashPaid,
+      creditAmount: creditAmount,
+      items: cart.map((it) => ({
+        itemName: it.itemName,
+        qty: it.qty,
+        price: it.price
+      }))
+    };
+    setActiveShareInvoice(draftTx);
+    setIsShareModalOpen(true);
   };
 
   // Get current active balance of selected party
@@ -635,9 +731,21 @@ export default function InvoiceView({
                     className="border border-slate-150 rounded-2xl p-4 hover:border-slate-300 hover:shadow-sm transition-all bg-white space-y-3"
                   >
                     <div className="flex justify-between items-center text-xs font-bold">
-                      <span className="bg-slate-100 px-2.5 py-1 rounded-lg text-slate-700 font-mono">
-                        رقم: {tx.invoiceNumber || tx.id.slice(-6)}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="bg-slate-100 px-2.5 py-1 rounded-lg text-slate-700 font-mono">
+                          رقم: {tx.invoiceNumber || tx.id.slice(-6)}
+                        </span>
+                        <button
+                          onClick={() => {
+                            setActiveShareInvoice(tx);
+                            setIsShareModalOpen(true);
+                          }}
+                          className="p-1 hover:bg-slate-150 rounded-lg text-slate-500 hover:text-emerald-600 transition-colors cursor-pointer"
+                          title="مشاركة الفاتورة"
+                        >
+                          <Share2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
                       <span className="text-slate-400 font-normal">
                         {new Date(tx.date).toLocaleTimeString('ar-YE', { hour: '2-digit', minute: '2-digit' })}
                       </span>
@@ -734,13 +842,25 @@ export default function InvoiceView({
             </div>
 
             <div className="flex items-center gap-2">
-              <button className="p-2 hover:bg-white/10 rounded-xl transition-colors cursor-pointer" title="طباعة فورية">
+              <button
+                onClick={() => window.print()}
+                className="p-2 hover:bg-white/10 rounded-xl transition-colors cursor-pointer"
+                title="طباعة فورية"
+              >
                 <Printer className="h-4.5 w-4.5 text-teal-100" />
               </button>
-              <button className="p-2 hover:bg-white/10 rounded-xl transition-colors cursor-pointer" title="مشاركة واتساب">
+              <button
+                onClick={handleShareDraft}
+                className="p-2 hover:bg-white/10 rounded-xl transition-colors cursor-pointer"
+                title="مشاركة الفاتورة"
+              >
                 <Share2 className="h-4.5 w-4.5 text-teal-100" />
               </button>
-              <button className="p-2 hover:bg-white/10 rounded-xl transition-colors cursor-pointer" title="تصدير PDF">
+              <button
+                onClick={() => window.print()}
+                className="p-2 hover:bg-white/10 rounded-xl transition-colors cursor-pointer"
+                title="تصدير PDF"
+              >
                 <FileDown className="h-4.5 w-4.5 text-teal-100" />
               </button>
               <button
@@ -1650,6 +1770,121 @@ export default function InvoiceView({
                 className="py-2.5 px-5 bg-teal-600 hover:bg-teal-700 text-white rounded-2xl text-[11px] font-black shadow-md cursor-pointer transition-all text-center flex-1"
               >
                 تطبيق وحفظ
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ==================== MODAL 4: SHARE INVOICE MODAL ==================== */}
+      {isShareModalOpen && activeShareInvoice && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-teal-50 animate-in zoom-in-95 duration-200 text-right" dir="rtl">
+            {/* Icon & Title */}
+            <div className="text-center pb-4 border-b border-slate-150 mb-5">
+              <div className="w-14 h-14 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-3 text-[#4b8c82]">
+                <Share2 className="h-7 w-7" />
+              </div>
+              <h3 className="text-base font-black text-slate-800">
+                المحاسب المحترف:
+              </h3>
+              <p className="text-xs text-slate-500 font-bold mt-1">
+                جاهز لمشاركة الفاتورة مع العميل عبر المنصات:
+              </p>
+            </div>
+
+            {/* Share Options Panel */}
+            <div className="bg-slate-50/50 rounded-2xl p-4 border border-slate-200/50 flex flex-col items-center gap-4">
+              {/* Buttons Row */}
+              <div className="flex justify-center items-center gap-6 w-full">
+                {/* WhatsApp Button */}
+                <button
+                  onClick={() => {
+                    const text = generateShareText(activeShareInvoice);
+                    const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+                    window.open(url, '_blank');
+                  }}
+                  className="flex flex-col items-center gap-1.5 cursor-pointer group flex-1"
+                  title="مشاركة عبر واتساب"
+                >
+                  <div className="w-12 h-12 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl flex items-center justify-center shadow-md transition-all transform group-hover:scale-105 active:scale-95 mx-auto">
+                    <MessageCircle className="h-6 w-6 fill-current" />
+                  </div>
+                  <span className="text-[10px] font-black text-slate-600">واتساب</span>
+                </button>
+
+                {/* Email Button */}
+                <button
+                  onClick={() => {
+                    const text = generateShareText(activeShareInvoice);
+                    const subject = activeShareInvoice.type === 'sale' ? 'فاتورة مبيعات - المحاسب المحترف' : 'فاتورة مشتريات - المحاسب المحترف';
+                    const url = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text)}`;
+                    window.open(url, '_blank');
+                  }}
+                  className="flex flex-col items-center gap-1.5 cursor-pointer group flex-1"
+                  title="مشاركة عبر البريد"
+                >
+                  <div className="w-12 h-12 bg-amber-500 hover:bg-amber-600 text-white rounded-2xl flex items-center justify-center shadow-md transition-all transform group-hover:scale-105 active:scale-95 mx-auto">
+                    <Mail className="h-6 w-6" />
+                  </div>
+                  <span className="text-[10px] font-black text-slate-600">بريد إلكتروني</span>
+                </button>
+
+                {/* Native / System Share Button */}
+                <button
+                  onClick={() => {
+                    const text = generateShareText(activeShareInvoice);
+                    if (navigator.share) {
+                      navigator.share({
+                        title: activeShareInvoice.type === 'sale' ? 'فاتورة مبيعات' : 'فاتورة مشتريات',
+                        text: text,
+                        url: 'https://almhaseb.vercel.app/'
+                      }).catch((err) => console.log('Error sharing:', err));
+                    } else {
+                      navigator.clipboard.writeText(text);
+                      alert('تم نسخ نص الفاتورة بالكامل! يمكنك الآن لصقه في أي تطبيق للدردشة.');
+                    }
+                  }}
+                  className="flex flex-col items-center gap-1.5 cursor-pointer group flex-1"
+                  title="مشاركة النظام"
+                >
+                  <div className="w-12 h-12 bg-teal-600 hover:bg-teal-700 text-white rounded-2xl flex items-center justify-center shadow-md transition-all transform group-hover:scale-105 active:scale-95 mx-auto">
+                    <Share2 className="h-6 w-6" />
+                  </div>
+                  <span className="text-[10px] font-black text-slate-600">مشاركة عامة</span>
+                </button>
+              </div>
+
+              {/* Checkbox "dont show again" */}
+              <label className="flex items-center gap-2 mt-2 cursor-pointer border-t border-slate-200/40 pt-3 w-full justify-center select-none">
+                <input
+                  type="checkbox"
+                  checked={dontShowSharePrompt}
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    setDontShowSharePrompt(checked);
+                    if (checked) {
+                      localStorage.setItem('dontShowSharePrompt', 'true');
+                    } else {
+                      localStorage.removeItem('dontShowSharePrompt');
+                    }
+                  }}
+                  className="rounded border-slate-300 text-[#4b8c82] focus:ring-[#4b8c82] h-4 w-4"
+                />
+                <span className="text-[10px] font-black text-slate-500">عدم إظهار هذا المربع تلقائياً عند الحفظ</span>
+              </label>
+            </div>
+
+            {/* Close/Cancel Button */}
+            <div className="mt-5">
+              <button
+                onClick={() => {
+                  setIsShareModalOpen(false);
+                  setActiveShareInvoice(null);
+                }}
+                className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl text-xs font-black transition-all cursor-pointer"
+              >
+                إلغاء
               </button>
             </div>
           </div>
