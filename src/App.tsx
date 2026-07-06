@@ -19,13 +19,16 @@ import {
   AlertTriangle,
   CheckCircle2,
   Info,
-  XCircle
+  XCircle,
+  Cloud,
+  CloudOff
 } from 'lucide-react';
 import { getInitialState, saveAllStates, formatCurrency } from './utils';
-import { Item, Customer, Supplier, Transaction, AppConfig } from './types';
+import { Item, Customer, Supplier, Transaction, AppConfig, UserAccount } from './types';
 
 // Importing modular components
 import Sidebar from './components/Sidebar';
+import AuthModal from './components/AuthModal';
 import Dashboard from './components/Dashboard';
 import InventoryView from './components/InventoryView';
 import InvoiceView from './components/InvoiceView';
@@ -47,6 +50,15 @@ export default function App() {
   });
 
   // Load initial states
+  const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'success' | 'error'>('idle');
+  const [isSupabaseMode, setIsSupabaseMode] = useState(false);
+
+  useEffect(() => {
+    import('./lib/supabase').then(({ isSupabaseConfigured }) => {
+      setIsSupabaseMode(isSupabaseConfigured());
+    });
+  }, []);
+
   useEffect(() => {
     // Force a one-time clear of old mock data so the user starts with a completely blank database
     const hasForceCleared = localStorage.getItem('acct_inv_force_cleared_v3');
@@ -61,6 +73,16 @@ export default function App() {
     setSuppliers(initialState.suppliers);
     setTransactions(initialState.transactions);
     setConfig(initialState.config);
+
+    // Load optionally authenticated user from localStorage if exists
+    const savedUser = localStorage.getItem('current_user');
+    if (savedUser) {
+      try {
+        setCurrentUser(JSON.parse(savedUser));
+      } catch (e) {
+        console.error('Error loading current_user from localStorage', e);
+      }
+    }
   }, []);
 
   // Sync to local storage
@@ -78,6 +100,29 @@ export default function App() {
       transactions: currentTransactions,
       config: currentConfig
     });
+
+    // Cloud background sync
+    if (currentUser && isSupabaseMode) {
+      setSyncStatus('syncing');
+      import('./lib/supabase').then(({ dbSyncUpAllData }) => {
+        dbSyncUpAllData(
+          currentUser.email,
+          currentItems,
+          currentCustomers,
+          currentSuppliers,
+          currentTransactions
+        ).then(res => {
+          if (res.success) {
+            setSyncStatus('success');
+            setTimeout(() => setSyncStatus('idle'), 3000);
+          } else {
+            setSyncStatus('error');
+          }
+        }).catch(() => {
+          setSyncStatus('error');
+        });
+      });
+    }
   };
 
   // --- Active Tab ---
@@ -111,6 +156,10 @@ export default function App() {
     title?: string;
     resolve?: (value: boolean) => void;
   } | null>(null);
+
+  // --- Authentication States (Optional Cloud Account) ---
+  const [currentUser, setCurrentUser] = useState<UserAccount | null>(null);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   useEffect(() => {
     window.alert = (message: string) => {
@@ -507,6 +556,18 @@ export default function App() {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         onOpenAddModal={(type) => setActiveModal(type)}
+        currentUser={currentUser}
+        onOpenAuthModal={() => setIsAuthModalOpen(true)}
+        onLogout={async () => {
+          const confirmOut = (window as any).customConfirm
+            ? await (window as any).customConfirm('هل أنت متأكد من رغبتك في تسجيل الخروج؟', 'تسجيل الخروج')
+            : window.confirm('هل أنت متأكد من رغبتك في تسجيل الخروج؟');
+          if (!confirmOut) return;
+          
+          localStorage.removeItem('current_user');
+          setCurrentUser(null);
+          window.alert('تم تسجيل الخروج بنجاح.');
+        }}
       />
 
       {/* Main Content Area */}
@@ -525,6 +586,11 @@ export default function App() {
             <div className="flex items-center gap-2">
               <Layers3 className="h-6 w-6 text-emerald-300" />
               <h1 className="font-bold text-lg tracking-wide hidden sm:block">العزيز للمحاسبة</h1>
+              {currentUser && (
+                <span className="hidden md:inline-block bg-white/10 text-emerald-100 text-[11px] font-bold px-2.5 py-1 rounded-lg border border-white/10">
+                  {currentUser.companyName}
+                </span>
+              )}
             </div>
           </div>
 
@@ -546,6 +612,41 @@ export default function App() {
                 )}
               </span>
             </div>
+
+            {/* Supabase Sync Status Indicator */}
+            {currentUser && isSupabaseMode && (
+              <div 
+                title="حالة المزامنة السحابية مع Supabase"
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold border transition-all ${
+                  syncStatus === 'syncing' ? 'bg-amber-500/15 border-amber-500/25 text-amber-300 animate-pulse' :
+                  syncStatus === 'success' ? 'bg-emerald-500/15 border-emerald-500/25 text-emerald-300' :
+                  syncStatus === 'error' ? 'bg-rose-500/15 border-rose-500/25 text-rose-300' :
+                  'bg-white/10 border-white/15 text-emerald-200'
+                }`}
+              >
+                {syncStatus === 'syncing' ? (
+                  <>
+                    <RefreshCw className="h-3.5 w-3.5 animate-spin text-amber-400" />
+                    <span className="hidden lg:inline">جاري المزامنة...</span>
+                  </>
+                ) : syncStatus === 'success' ? (
+                  <>
+                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
+                    <span className="hidden lg:inline">تم الحفظ سحابياً</span>
+                  </>
+                ) : syncStatus === 'error' ? (
+                  <>
+                    <AlertTriangle className="h-3.5 w-3.5 text-rose-400" />
+                    <span className="hidden lg:inline">خطأ بالمزامنة</span>
+                  </>
+                ) : (
+                  <>
+                    <Cloud className="h-3.5 w-3.5 text-emerald-300" />
+                    <span className="hidden lg:inline">سحابي متصل</span>
+                  </>
+                )}
+              </div>
+            )}
 
             {/* Quick Actions Dropdown mimicking screenshot 4 menu */}
             <div className="relative group">
@@ -1054,6 +1155,85 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {/* Auth Modal for Optional Account creation and login */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        onLoginSuccess={async (user) => {
+          localStorage.setItem('current_user', JSON.stringify(user));
+          setCurrentUser(user);
+          
+          // Dynamically check if Supabase is configured
+          try {
+            const { isSupabaseConfigured, dbSyncDownAllData, dbSyncUpAllData } = await import('./lib/supabase');
+            if (isSupabaseConfigured()) {
+              setSyncStatus('syncing');
+              const res = await dbSyncDownAllData(user.email);
+              if (res.success && res.data) {
+                const hasCloudData = res.data.items.length > 0 || res.data.transactions.length > 0;
+                if (hasCloudData) {
+                  setSyncStatus('idle');
+                  // Use window.customConfirm to prompt the user
+                  const confirmPull = (window as any).customConfirm
+                    ? await (window as any).customConfirm('تم العثور على نسخة احتياطية سحابية لبياناتك المحاسبية. هل ترغب في تنزيلها ومزامنتها مع هذا الجهاز الآن؟\n\nتنبيه: هذا الإجراء سيقوم باستبدال أي بيانات محلية حالية بالبيانات السحابية.', 'مزامنة وتنزيل البيانات السحابية')
+                    : window.confirm('تم العثور على بيانات سحابية. هل ترغب في تنزيلها؟');
+                  
+                  if (confirmPull) {
+                    setItems(res.data.items);
+                    setCustomers(res.data.customers);
+                    setSuppliers(res.data.suppliers);
+                    setTransactions(res.data.transactions);
+                    
+                    // Persist to local storage
+                    saveAllStates({
+                      items: res.data.items,
+                      customers: res.data.customers,
+                      suppliers: res.data.suppliers,
+                      transactions: res.data.transactions,
+                      config: config
+                    });
+                    
+                    setSyncStatus('success');
+                    window.alert('تمت مزامنة وتنزيل البيانات السحابية بنجاح على هذا الجهاز.');
+                    setTimeout(() => setSyncStatus('idle'), 3000);
+                  }
+                } else {
+                  // If no cloud data exists, offer to upload local state to secure their current offline records
+                  setSyncStatus('idle');
+                  const confirmPush = (window as any).customConfirm
+                    ? await (window as any).customConfirm('حسابك السحابي الجديد فارغ حالياً من أي بيانات محاسبية.\n\nهل ترغب في رفع ونسخ بياناتك المحلية الحالية لتأمينها سحابياً وتسهيل الوصول إليها من أي جهاز آخر؟', 'رفع نسخة احتياطية سحابية')
+                    : window.confirm('هل ترغب في رفع وتأمين بياناتك المحلية الحالية؟');
+                  
+                  if (confirmPush) {
+                    setSyncStatus('syncing');
+                    const uploadRes = await dbSyncUpAllData(
+                      user.email,
+                      items,
+                      customers,
+                      suppliers,
+                      transactions
+                    );
+                    if (uploadRes.success) {
+                      setSyncStatus('success');
+                      window.alert('تم رفع وتأمين بياناتك المحلية سحابياً بنجاح على Supabase!');
+                      setTimeout(() => setSyncStatus('idle'), 3000);
+                    } else {
+                      setSyncStatus('error');
+                      window.alert('فشل في رفع البيانات السحابية: ' + uploadRes.message);
+                    }
+                  }
+                }
+              } else {
+                setSyncStatus('idle');
+              }
+            }
+          } catch (err) {
+            console.error('Error during Supabase login sync:', err);
+            setSyncStatus('error');
+          }
+        }}
+      />
     </div>
   );
 }

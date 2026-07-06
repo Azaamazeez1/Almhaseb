@@ -14,8 +14,14 @@ import {
   Layers,
   X,
   Phone,
-  Mail
+  Mail,
+  User,
+  LogOut,
+  LogIn,
+  MapPin,
+  Building2
 } from 'lucide-react';
+import { UserAccount } from '../types';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -23,6 +29,9 @@ interface SidebarProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
   onOpenAddModal: (type: 'item' | 'customer' | 'supplier' | 'voucher_in' | 'voucher_out') => void;
+  currentUser: UserAccount | null;
+  onOpenAuthModal: () => void;
+  onLogout: () => void;
 }
 
 export default function Sidebar({
@@ -30,7 +39,10 @@ export default function Sidebar({
   onClose,
   activeTab,
   setActiveTab,
-  onOpenAddModal
+  onOpenAddModal,
+  currentUser,
+  onOpenAuthModal,
+  onLogout
 }: SidebarProps) {
   const menuItems = [
     { id: 'dashboard', label: 'الرئيسية والصندوق', icon: Wallet },
@@ -86,7 +98,9 @@ export default function Sidebar({
             </div>
             <div>
               <h2 className="font-bold text-xl tracking-tight">العزيز للمحاسبة</h2>
-              <p className="text-xs text-emerald-200">نظام إدارة الحسابات وجرد المخازن</p>
+              <p className="text-xs text-emerald-200 truncate max-w-[170px]">
+                {currentUser ? currentUser.companyName : 'نظام إدارة الحسابات وجرد المخازن'}
+              </p>
             </div>
           </div>
 
@@ -104,6 +118,75 @@ export default function Sidebar({
 
         {/* Sidebar Body */}
         <div className="h-[calc(100%-165px)] overflow-y-auto p-4 space-y-6 scrollbar-thin">
+          
+          {/* Optional User Profile / Calm Authentication Card */}
+          <div className="animate-in fade-in duration-300">
+            {currentUser ? (
+              // Logged In Status Card (Gorgeously styled)
+              <div className="bg-gradient-to-br from-emerald-50/50 to-teal-50/30 border border-emerald-100 rounded-2xl p-4 shadow-xs relative overflow-hidden">
+                <div className="absolute -left-4 -bottom-4 w-12 h-12 bg-emerald-500/5 rounded-full blur-xl"></div>
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-full bg-gradient-to-br from-emerald-500 to-teal-700 text-white font-black text-xs flex items-center justify-center shadow-xs">
+                    {currentUser.fullName.trim().charAt(0)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="text-xs font-black text-slate-800 truncate">
+                      {currentUser.fullName}
+                    </h4>
+                    <p className="text-[10px] font-bold text-slate-400 truncate flex items-center gap-1">
+                      <Building2 className="h-2.5 w-2.5 text-emerald-600 shrink-0" />
+                      <span>{currentUser.companyName}</span>
+                    </p>
+                    <p className="text-[9px] font-semibold text-teal-600 truncate flex items-center gap-1 mt-0.5">
+                      <MapPin className="h-2.5 w-2.5 shrink-0" />
+                      <span>{currentUser.countryRegion}</span>
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between border-t border-emerald-100/60 mt-3 pt-2.5">
+                  <span className="text-[10px] font-black text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full flex items-center gap-1.5">
+                    <span className="h-1.5 w-1.5 bg-emerald-500 rounded-full animate-ping"></span>
+                    حساب نشط
+                  </span>
+                  <button
+                    onClick={onLogout}
+                    className="text-[10px] font-black text-rose-500 hover:text-rose-600 flex items-center gap-1 transition-colors cursor-pointer"
+                  >
+                    <LogOut className="h-3 w-3" />
+                    <span>تسجيل الخروج</span>
+                  </button>
+                </div>
+              </div>
+            ) : (
+              // Calm, welcoming logged-out card (with Option to register or login)
+              <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 text-right shadow-xs relative overflow-hidden">
+                <div className="flex items-start gap-3">
+                  <div className="p-2 bg-slate-100 rounded-xl text-slate-400 shrink-0">
+                    <User className="h-4 w-4" />
+                  </div>
+                  <div className="space-y-1">
+                    <h4 className="font-black text-xs text-slate-800 flex items-center gap-1.5">
+                      حساب السحابة <span className="text-[10px] font-normal text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded-md">اختياري</span>
+                    </h4>
+                    <p className="text-[10px] font-bold text-slate-400 leading-normal">
+                      سجل حسابك لتخصيص بيانات مؤسستك وحفظ تقاريرك بشكل مستقل.
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={onOpenAuthModal}
+                  className="w-full mt-3.5 py-2 px-4 bg-white hover:bg-slate-50 text-emerald-700 hover:text-emerald-800 border border-emerald-100 rounded-xl text-xs font-black transition-all cursor-pointer shadow-xs active:scale-98 flex items-center justify-center gap-1.5 select-none"
+                >
+                  <LogIn className="h-3.5 w-3.5" />
+                  <span>تسجيل الدخول / إنشاء حساب</span>
+                </button>
+              </div>
+            )}
+          </div>
+
           {/* Main Navigation */}
           <div>
             <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider block mb-3 px-3">

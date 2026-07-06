@@ -61,3 +61,12 @@ export interface AppConfig {
   financialYear: string;
   thermalPrinterWidth: '58mm' | '80mm';
 }
+
+export interface UserAccount {
+  email: string;
+  fullName: string;
+  companyName: string;
+  countryRegion: string;
+  phone?: string;
+}
+
