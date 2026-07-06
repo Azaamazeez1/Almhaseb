@@ -1,22 +1,26 @@
-const CACHE_NAME = 'alaziz-accounting-v1';
+const CACHE_NAME = 'alaziz-accounting-v2';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
   '/manifest.json',
   '/icon-192.png',
   '/icon-512.png',
-  '/icon-192.jpg',
-  '/icon-512.jpg',
   '/favicon.png',
   '/favicon.ico'
 ];
 
-// Install Event - Pre-cache essential static assets
+// Install Event - Pre-cache essential static assets safely
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      console.log('[Service Worker] Caching app shell and assets');
-      return cache.addAll(ASSETS_TO_CACHE);
+      console.log('[Service Worker] Caching app shell and assets safely');
+      // Cache assets one by one so that if any asset returns 404/fails, it does not fail the SW installation
+      const cachePromises = ASSETS_TO_CACHE.map((url) => {
+        return cache.add(url).catch((err) => {
+          console.warn(`[Service Worker] Failed to cache asset: ${url}`, err);
+        });
+      });
+      return Promise.all(cachePromises);
     }).then(() => {
       return self.skipWaiting();
     })
