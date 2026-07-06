@@ -58,8 +58,9 @@ self.addEventListener('fetch', (event) => {
         // Fetch fresh in background to update cache (Stale-While-Revalidate)
         fetch(event.request).then((networkResponse) => {
           if (networkResponse && networkResponse.status === 200) {
+            const responseToCache = networkResponse.clone();
             caches.open(CACHE_NAME).then((cache) => {
-              cache.put(event.request, networkResponse);
+              cache.put(event.request, responseToCache);
             });
           }
         }).catch(() => {
