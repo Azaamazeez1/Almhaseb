@@ -109,10 +109,6 @@ export default function Sidebar({
               <Phone className="h-3 w-3 text-emerald-300" />
               <span>+967 775215158</span>
             </div>
-            <div className="flex items-center gap-2">
-              <Mail className="h-3 w-3 text-emerald-300" />
-              <span>almohaseb.jw@gmail.com</span>
-            </div>
           </div>
         </div>
 
