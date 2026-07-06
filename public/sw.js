@@ -3,9 +3,7 @@ const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
   '/manifest.json',
-  '/icon-192.png',
   '/icon-192.jpg',
-  '/icon-512.png',
   '/icon-512.jpg',
   '/favicon.ico'
 ];
@@ -77,7 +75,8 @@ self.addEventListener('fetch', (event) => {
         return networkResponse;
       }).catch(() => {
         // Return offline fallback if network fails
-        if (event.request.headers.get('accept').includes('text/html')) {
+        const acceptHeader = event.request.headers.get('accept');
+        if (acceptHeader && acceptHeader.includes('text/html')) {
           return caches.match('/');
         }
       });
