@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS public.user_accounts (
 
 -- Enable RLS for user_accounts
 ALTER TABLE public.user_accounts ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow public read/write for user accounts" ON public.user_accounts;
 CREATE POLICY "Allow public read/write for user accounts" ON public.user_accounts
     FOR ALL USING (true) WITH CHECK (true);
 
@@ -37,6 +38,7 @@ CREATE TABLE IF NOT EXISTS public.inventory_items (
 
 -- Enable RLS for inventory_items
 ALTER TABLE public.inventory_items ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow public read/write for items" ON public.inventory_items;
 CREATE POLICY "Allow public read/write for items" ON public.inventory_items
     FOR ALL USING (true) WITH CHECK (true);
 
@@ -55,6 +57,7 @@ CREATE TABLE IF NOT EXISTS public.parties (
 
 -- Enable RLS for parties
 ALTER TABLE public.parties ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow public read/write for parties" ON public.parties;
 CREATE POLICY "Allow public read/write for parties" ON public.parties
     FOR ALL USING (true) WITH CHECK (true);
 
@@ -77,5 +80,6 @@ CREATE TABLE IF NOT EXISTS public.transactions (
 
 -- Enable RLS for transactions
 ALTER TABLE public.transactions ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow public read/write for transactions" ON public.transactions;
 CREATE POLICY "Allow public read/write for transactions" ON public.transactions
     FOR ALL USING (true) WITH CHECK (true);
