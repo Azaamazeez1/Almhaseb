@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { Transaction, Customer, Supplier, Item } from '../types';
 import { calculateSummary, formatCurrency, exportToBackupFile } from '../utils';
+import { CustomSelect, UNIT_OPTIONS } from './CustomSelect';
 
 interface DashboardProps {
   transactions: Transaction[];
@@ -869,17 +870,11 @@ export default function Dashboard({
 
                 <div>
                   <label className="block text-xs font-black text-gray-500 mb-1 text-right">وحدة القياس</label>
-                  <select
+                  <CustomSelect
                     value={editUnit}
-                    onChange={(e) => setEditUnit(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-teal-600 focus:bg-white transition-all font-bold text-center"
-                  >
-                    <option value="حبة">حبة</option>
-                    <option value="كرتون">كرتون</option>
-                    <option value="كيس">كيس</option>
-                    <option value="متر">متر</option>
-                    <option value="لتر">لتر</option>
-                  </select>
+                    onChange={(val) => setEditUnit(val)}
+                    options={UNIT_OPTIONS}
+                  />
                 </div>
               </div>
 

@@ -36,6 +36,7 @@ import PartiesView from './components/PartiesView';
 import VoucherForm from './components/VoucherForm';
 import ReportsView from './components/ReportsView';
 import PWAInstallView from './components/PWAInstallView';
+import { CustomSelect, UNIT_OPTIONS } from './components/CustomSelect';
 
 export default function App() {
   // --- Global States ---
@@ -488,9 +489,19 @@ export default function App() {
             onUpdateStock={handleUpdateStock}
             onUpdateItem={handleUpdateItem}
             onOpenAddModal={(prefillName) => {
-              if (prefillName) {
+              if (prefillName && typeof prefillName === 'string') {
                 setNewItemName(prefillName);
+              } else {
+                setNewItemName('');
               }
+              // Generate new code automatically
+              const nextCode = items.length > 0 
+                ? (Math.max(...items.map(it => parseInt(it.code) || 0)) + 1).toString()
+                : '101';
+              setNewItemCode(nextCode);
+              setNewItemCost(0);
+              setNewItemPrice(0);
+              setNewItemUnit('حبة');
               setActiveModal('item');
             }}
           />
@@ -744,18 +755,12 @@ export default function App() {
 
                 <div>
                   <label className="block text-xs font-semibold text-gray-500 mb-1">وحدة القياس</label>
-                  <select
+                  <CustomSelect
                     id="modal-item-unit-select"
                     value={newItemUnit}
-                    onChange={(e) => setNewItemUnit(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-emerald-600 focus:bg-white transition-all font-bold"
-                  >
-                    <option value="حبة">حبة</option>
-                    <option value="كرتون">كرتون</option>
-                    <option value="كيس">كيس</option>
-                    <option value="متر">متر</option>
-                    <option value="لتر">لتر</option>
-                  </select>
+                    onChange={(val) => setNewItemUnit(val)}
+                    options={UNIT_OPTIONS}
+                  />
                 </div>
               </div>
 

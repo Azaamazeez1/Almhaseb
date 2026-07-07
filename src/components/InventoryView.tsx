@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { Item } from '../types';
 import { formatCurrency } from '../utils';
+import { CustomSelect, UNIT_OPTIONS } from './CustomSelect';
 
 interface InventoryViewProps {
   items: Item[];
@@ -157,7 +158,7 @@ export default function InventoryView({
 
           <button
             id="add-item-modal-btn"
-            onClick={onOpenAddModal}
+            onClick={() => onOpenAddModal()}
             className="bg-emerald-700 hover:bg-emerald-800 text-white px-4 py-2.5 rounded-xl text-xs font-semibold shadow-sm flex items-center gap-2 cursor-pointer transition-colors"
           >
             <Plus className="h-4 w-4" />
@@ -524,17 +525,11 @@ export default function InventoryView({
 
                 <div>
                   <label className="block text-xs font-black text-gray-500 mb-1 text-right">وحدة القياس</label>
-                  <select
+                  <CustomSelect
                     value={modalEditUnit}
-                    onChange={(e) => setModalEditUnit(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-teal-600 focus:bg-white transition-all font-bold text-center"
-                  >
-                    <option value="حبة">حبة</option>
-                    <option value="كرتون">كرتون</option>
-                    <option value="كيس">كيس</option>
-                    <option value="متر">متر</option>
-                    <option value="لتر">لتر</option>
-                  </select>
+                    onChange={(val) => setModalEditUnit(val)}
+                    options={UNIT_OPTIONS}
+                  />
                 </div>
               </div>
 

@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { Item, Customer, Supplier, Transaction, TransactionType } from '../types';
 import { formatCurrency } from '../utils';
+import { CustomSelect, UNIT_OPTIONS } from './CustomSelect';
 
 interface InvoiceViewProps {
   items: Item[];
@@ -1311,17 +1312,11 @@ https://almhaseb.vercel.app/`;
 
                   <div>
                     <label className="block text-[10px] font-black text-slate-500 mb-1">وحدة القياس</label>
-                    <select
+                    <CustomSelect
                       value={newSelectorItemUnit}
-                      onChange={(e) => setNewSelectorItemUnit(e.target.value)}
-                      className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-emerald-600 focus:bg-white font-bold"
-                    >
-                      <option value="حبة">حبة</option>
-                      <option value="كرتون">كرتون</option>
-                      <option value="كيس">كيس</option>
-                      <option value="متر">متر</option>
-                      <option value="لتر">لتر</option>
-                    </select>
+                      onChange={(val) => setNewSelectorItemUnit(val)}
+                      options={UNIT_OPTIONS}
+                    />
                   </div>
                 </div>
 
@@ -1445,17 +1440,12 @@ https://almhaseb.vercel.app/`;
                                 {/* Unit Dropdown */}
                                 <div>
                                   <label className="block text-[9px] font-black text-slate-400 mb-1">وحدة القياس</label>
-                                  <select
+                                  <CustomSelect
                                     value={selectorUnit}
-                                    onChange={(e) => setSelectorUnit(e.target.value)}
-                                    className="w-full px-1.5 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-black text-center focus:outline-none focus:border-teal-600"
-                                  >
-                                    <option value="حبة">حبة</option>
-                                    <option value="كرتون">كرتون</option>
-                                    <option value="كيس">كيس</option>
-                                    <option value="متر">متر</option>
-                                    <option value="لتر">لتر</option>
-                                  </select>
+                                    onChange={(val) => setSelectorUnit(val)}
+                                    options={UNIT_OPTIONS}
+                                    className="px-1.5 py-[7px] bg-slate-50 border border-slate-200 rounded-lg text-xs font-black text-center"
+                                  />
                                 </div>
 
                                 {/* Qty Input field */}
