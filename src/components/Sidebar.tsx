@@ -19,7 +19,8 @@ import {
   LogOut,
   LogIn,
   MapPin,
-  Building2
+  Building2,
+  Smartphone
 } from 'lucide-react';
 import { UserAccount } from '../types';
 
@@ -53,6 +54,7 @@ export default function Sidebar({
     { id: 'suppliers', label: 'إدارة الموردين', icon: Truck },
     { id: 'reports', label: 'الإيرادات والمصروفات والصافي', icon: TrendingUp },
     { id: 'balance_sheet', label: 'الميزانية العمومية والمركز المالي', icon: Briefcase },
+    { id: 'pwa_install', label: 'تثبيت التطبيق (APK)', icon: Smartphone },
   ];
 
   const quickActions = [

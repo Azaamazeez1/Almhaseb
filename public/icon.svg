@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#047857" />
+      <stop offset="100%" stop-color="#064e3b" />
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+  <!-- Background -->
+  <rect width="512" height="512" rx="128" fill="url(#bgGrad)" />
+  
+  <!-- Outer Glow Circle -->
+  <circle cx="256" cy="256" r="210" fill="none" stroke="#34d399" stroke-width="4" stroke-opacity="0.3" />
+
+  <!-- Main Accounting & Ledger Graphic -->
+  <g transform="translate(116, 116)" filter="url(#shadow)">
+    <!-- Ledger Book -->
+    <path d="M40 20h180c11 0 20 9 20 20v200c0 11-9 20-20 20H40c-11 0-20-9-20-20V40c0-11 9-20 20-20z" fill="#ffffff" />
+    <!-- Book Spine -->
+    <path d="M20 40c0-11 9-20 20-20h20v240H40c-11 0-20-9-20-20V40z" fill="#047857" />
+    <!-- Gold Spine Ribs -->
+    <line x1="20" y1="60" x2="40" y2="60" stroke="#fbbf24" stroke-width="4" />
+    <line x1="20" y1="120" x2="40" y2="120" stroke="#fbbf24" stroke-width="4" />
+    <line x1="20" y1="180" x2="40" y2="180" stroke="#fbbf24" stroke-width="4" />
+    
+    <!-- Grid lines -->
+    <line x1="70" y1="60" x2="210" y2="60" stroke="#e2e8f0" stroke-width="4" stroke-linecap="round" />
+    <line x1="70" y1="100" x2="210" y2="100" stroke="#e2e8f0" stroke-width="4" stroke-linecap="round" />
+    <line x1="70" y1="140" x2="210" y2="140" stroke="#e2e8f0" stroke-width="4" stroke-linecap="round" />
+    <line x1="70" y1="180" x2="210" y2="180" stroke="#e2e8f0" stroke-width="4" stroke-linecap="round" />
+    <line x1="70" y1="220" x2="210" y2="220" stroke="#e2e8f0" stroke-width="4" stroke-linecap="round" />
+
+    <!-- Ledger Column Separators -->
+    <line x1="130" y1="40" x2="130" y2="240" stroke="#cbd5e1" stroke-width="2" stroke-dasharray="4,4" />
+    <line x1="175" y1="40" x2="175" y2="240" stroke="#f87171" stroke-width="2" />
+
+    <!-- Dynamic Line Chart representing growth -->
+    <path d="M80 180 l30-40 40 20 40-50" fill="none" stroke="#059669" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" />
+    <circle cx="80" cy="180" r="7" fill="#10b981" />
+    <circle cx="110" cy="140" r="7" fill="#10b981" />
+    <circle cx="150" cy="160" r="7" fill="#10b981" />
+    <circle cx="190" cy="110" r="7" fill="#10b981" />
+
+    <!-- Currency Symbol overlay -->
+    <circle cx="190" cy="180" r="30" fill="#fbbf24" />
+    <text x="190" y="191" font-family="Arial, sans-serif" font-size="32" font-weight="bold" fill="#064e3b" text-anchor="middle">$</text>
+  </g>
+</svg>

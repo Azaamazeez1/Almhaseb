@@ -1,93 +1,67 @@
-const CACHE_NAME = 'alaziz-accounting-v2';
+const CACHE_NAME = 'al-aziz-accounting-v1';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
   '/manifest.json',
-  '/icon-192.png',
-  '/icon-512.png',
-  '/favicon.png',
-  '/favicon.ico'
+  '/icon.svg'
 ];
 
-// Install Event - Pre-cache essential static assets safely
+// Install Event
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      console.log('[Service Worker] Caching app shell and assets safely');
-      // Cache assets one by one so that if any asset returns 404/fails, it does not fail the SW installation
-      const cachePromises = ASSETS_TO_CACHE.map((url) => {
-        return cache.add(url).catch((err) => {
-          console.warn(`[Service Worker] Failed to cache asset: ${url}`, err);
-        });
+      console.log('[Service Worker] Pre-caching offline assets');
+      return cache.addAll(ASSETS_TO_CACHE).catch(err => {
+        console.warn('[Service Worker] Pre-cache warning:', err);
       });
-      return Promise.all(cachePromises);
-    }).then(() => {
-      return self.skipWaiting();
     })
   );
+  self.skipWaiting();
 });
 
-// Activate Event - Clean up old caches
+// Activate Event
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
+    caches.keys().then((keys) => {
       return Promise.all(
-        cacheNames.map((cache) => {
-          if (cache !== CACHE_NAME) {
-            console.log('[Service Worker] Clearing old cache:', cache);
-            return caches.delete(cache);
+        keys.map((key) => {
+          if (key !== CACHE_NAME) {
+            console.log('[Service Worker] Removing old cache', key);
+            return caches.delete(key);
           }
         })
       );
-    }).then(() => {
-      return self.clients.claim();
     })
   );
+  self.clients.claim();
 });
 
-// Fetch Event - Serve assets from cache, fallback to network
+// Fetch Event
 self.addEventListener('fetch', (event) => {
-  // Only handle GET requests and local/http requests
-  if (event.request.method !== 'GET' || !event.request.url.startsWith(self.location.origin)) {
-    return;
-  }
+  if (event.request.method !== 'GET') return;
+  
+  const url = new URL(event.request.url);
+  
+  // Do not intercept external API requests like Supabase or Google APIs to avoid breaking database synchronization
+  if (url.origin !== self.location.origin) return;
 
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      if (cachedResponse) {
-        // Fetch fresh in background to update cache (Stale-While-Revalidate)
-        fetch(event.request).then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200) {
-            const responseToCache = networkResponse.clone();
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put(event.request, responseToCache);
-            });
+    fetch(event.request)
+      .then((response) => {
+        if (response && response.status === 200 && response.type === 'basic') {
+          const responseToCache = response.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseToCache);
+          });
+        }
+        return response;
+      })
+      .catch(() => {
+        return caches.match(event.request).then((cachedResponse) => {
+          if (cachedResponse) {
+            return cachedResponse;
           }
-        }).catch(() => {
-          // Ignore background fetch errors
         });
-        return cachedResponse;
-      }
-
-      // Network first for other dynamic paths (like API/Database pages if applicable)
-      return fetch(event.request).then((networkResponse) => {
-        if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
-          return networkResponse;
-        }
-
-        const responseToCache = networkResponse.clone();
-        caches.open(CACHE_NAME).then((cache) => {
-          cache.put(event.request, responseToCache);
-        });
-
-        return networkResponse;
-      }).catch(() => {
-        // Return offline fallback if network fails
-        const acceptHeader = event.request.headers.get('accept');
-        if (acceptHeader && acceptHeader.includes('text/html')) {
-          return caches.match('/');
-        }
-      });
-    })
+      })
   );
 });

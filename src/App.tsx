@@ -35,6 +35,7 @@ import InvoiceView from './components/InvoiceView';
 import PartiesView from './components/PartiesView';
 import VoucherForm from './components/VoucherForm';
 import ReportsView from './components/ReportsView';
+import PWAInstallView from './components/PWAInstallView';
 
 export default function App() {
   // --- Global States ---
@@ -539,6 +540,13 @@ export default function App() {
             suppliers={suppliers}
             items={items}
             activeSubReport="balance_sheet"
+          />
+        );
+
+      case 'pwa_install':
+        return (
+          <PWAInstallView 
+            appUrl="https://ais-pre-53r6c57liz46ey3f5ap5qv-162818379984.europe-west2.run.app" 
           />
         );
 
