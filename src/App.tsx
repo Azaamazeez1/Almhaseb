@@ -126,9 +126,36 @@ export default function App() {
     }
   };
 
-  // --- Active Tab ---
-  const [activeTab, setActiveTab] = useState<string>('dashboard');
+  // --- Active Tab with Browser History Integration ---
+  const [activeTab, setActiveTabState] = useState<string>('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const setActiveTab = (tab: string) => {
+    setActiveTabState(tab);
+    if (!window.history.state || window.history.state.tab !== tab) {
+      window.history.pushState({ tab }, '', '');
+    }
+  };
+
+  useEffect(() => {
+    // Set initial state so back button knows where to land
+    if (!window.history.state) {
+      window.history.replaceState({ tab: 'dashboard' }, '', '');
+    }
+
+    const handlePopState = (event: PopStateEvent) => {
+      if (event.state && typeof event.state.tab === 'string') {
+        setActiveTabState(event.state.tab);
+      } else {
+        setActiveTabState('dashboard');
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, []);
 
   // --- Modals State ---
   const [activeModal, setActiveModal] = useState<'item' | 'customer' | 'supplier' | 'voucher_in' | 'voucher_out' | 'sale_return' | 'purchase_return' | 'about' | 'settings' | null>(null);
