@@ -80,7 +80,7 @@ export default function PWAInstallView({ appUrl }: PWAInstallViewProps) {
               <Smartphone className="h-3.5 w-3.5" />
               تطبيق هاتف ذكي (PWA / APK)
             </span>
-            <h2 className="text-2xl md:text-3xl font-black tracking-tight">تثبيت العزيز للمحاسبة على هاتفك</h2>
+            <h2 className="text-2xl md:text-3xl font-black tracking-tight">تثبيت بيبرس للمحاسبة على هاتفك</h2>
             <p className="text-emerald-100/80 text-xs md:text-sm max-w-xl leading-relaxed">
               يمكنك تشغيل وتثبيت هذا البرنامج على جميع الهواتف الذكية (أندرويد وآيفون) وأجهزة الكمبيوتر مباشرة من المتصفح كـ تطبيق متكامل وسريع، بميزة الوصول السريع والأمان الفائق وبدون الحاجة لمتجر تطبيقات!
             </p>

@@ -531,7 +531,7 @@ export default function InvoiceView({
     const netAmount = tx.amount;
     const subTotalVal = netAmount + discountVal;
 
-    const msg = `*العزيز للمحاسبة - ${typeText}* 🧾
+    const msg = `*بيبرس للمحاسبة - ${typeText}* 🧾
 ----------------------------------------
 *رقم الفاتورة:* ${numberText}
 *التاريخ:* ${dateStr}
@@ -545,7 +545,7 @@ ${itemsText}----------------------------------------
 *الصافي المطلوب:* ${formatCurrency(netAmount)}
 *المسدد نقداً:* ${formatCurrency(tx.cashPaid || 0)}
 
-*برنامج العزيز للمحاسبة* 📱:
+*برنامج بيبرس للمحاسبة* 📱:
 https://almhaseb.vercel.app/`;
 
     return msg;
@@ -1985,7 +1985,7 @@ https://almhaseb.vercel.app/`;
                 <Share2 className="h-7 w-7" />
               </div>
               <h3 className="text-base font-black text-slate-800">
-                العزيز للمحاسبة:
+                بيبرس للمحاسبة:
               </h3>
               <p className="text-xs text-slate-500 font-bold mt-1">
                 جاهز لمشاركة الفاتورة مع العميل عبر المنصات:
@@ -2016,7 +2016,7 @@ https://almhaseb.vercel.app/`;
                 <button
                   onClick={() => {
                     const text = generateShareText(activeShareInvoice);
-                    const subject = activeShareInvoice.type === 'sale' ? 'فاتورة مبيعات - العزيز للمحاسبة' : 'فاتورة مشتريات - العزيز للمحاسبة';
+                    const subject = activeShareInvoice.type === 'sale' ? 'فاتورة مبيعات - بيبرس للمحاسبة' : 'فاتورة مشتريات - بيبرس للمحاسبة';
                     const url = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text)}`;
                     window.open(url, '_blank');
                   }}

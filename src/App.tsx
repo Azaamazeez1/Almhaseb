@@ -44,7 +44,7 @@ export default function App() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [config, setConfig] = useState<AppConfig>({
-    appName: 'العزيز للمحاسبة',
+    appName: 'بيبرس للمحاسبة',
     currency: 'USD',
     financialYear: '2026',
     thermalPrinterWidth: '80mm'
@@ -620,7 +620,7 @@ export default function App() {
 
             <div className="flex items-center gap-2">
               <Layers3 className="h-6 w-6 text-emerald-300" />
-              <h1 className="font-bold text-lg tracking-wide hidden sm:block">العزيز للمحاسبة</h1>
+              <h1 className="font-bold text-lg tracking-wide hidden sm:block">بيبرس للمحاسبة</h1>
               {currentUser && (
                 <span className="hidden md:inline-block bg-white/10 text-emerald-100 text-[11px] font-bold px-2.5 py-1 rounded-lg border border-white/10">
                   {currentUser.companyName}

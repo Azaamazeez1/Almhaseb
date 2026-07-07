@@ -143,10 +143,10 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModal
         if (email.toLowerCase().trim() === 'demo@aziz.com' && password === '123456') {
           const demoUser: UserAccount = {
             email: 'demo@aziz.com',
-            fullName: 'العزيز للمحاسبة ديمو',
-            companyName: 'مؤسسة العزيز التجارية',
-            countryRegion: 'اليمن - صنعاء',
-            phone: '775215158'
+            fullName: 'بيبرس للمحاسبة ديمو',
+            companyName: 'مؤسسة بيبرس التجارية',
+            countryRegion: 'سوريا - دمشق',
+            phone: '981854442'
           };
           setSuccess('تم تسجيل الدخول بحساب تجريبي بنجاح!');
           setTimeout(() => {
@@ -312,7 +312,7 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModal
           <p className="text-[10px] text-slate-500 font-bold mt-0.5 max-w-[280px] mx-auto leading-relaxed">
             {isRegister 
               ? 'سجل حسابك لتخصيص بيانات مؤسستك وحفظها بشكل متكامل' 
-              : 'سجل دخولك للوصول إلى نظام العزيز المحاسبي وإدارة عملياتك'}
+              : 'سجل دخولك للوصول إلى نظام بيبرس المحاسبي وإدارة عملياتك'}
           </p>
         </div>
 
@@ -420,7 +420,7 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModal
                   </span>
                   <input
                     type="text"
-                    placeholder="شركة العزيز المحدودة"
+                    placeholder="شركة بيبرس المحدودة"
                     value={companyName}
                     onChange={(e) => setCompanyName(e.target.value)}
                     disabled={loading}
@@ -458,7 +458,7 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModal
                   </span>
                   <input
                     type="tel"
-                    placeholder="775215158"
+                    placeholder="981854442"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     disabled={loading}

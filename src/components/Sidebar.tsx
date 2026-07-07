@@ -99,7 +99,7 @@ export default function Sidebar({
               <Layers className="h-7 w-7 text-emerald-300" />
             </div>
             <div>
-              <h2 className="font-bold text-xl tracking-tight">العزيز للمحاسبة</h2>
+              <h2 className="font-bold text-xl tracking-tight">بيبرس للمحاسبة</h2>
               <p className="text-xs text-emerald-200 truncate max-w-[170px]">
                 {currentUser ? currentUser.companyName : 'نظام إدارة الحسابات وجرد المخازن'}
               </p>
@@ -107,10 +107,16 @@ export default function Sidebar({
           </div>
 
           <div className="border-t border-white/10 pt-3 text-xs text-emerald-100/90 space-y-1.5">
-            <div className="flex items-center gap-2">
+            <a 
+              href="https://wa.me/963981854442" 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="flex items-center gap-2 hover:text-emerald-300 transition-colors duration-150 cursor-pointer"
+              title="تواصل معنا عبر واتساب"
+            >
               <Phone className="h-3 w-3 text-emerald-300" />
-              <span>+967 775215158</span>
-            </div>
+              <span>+963 981 854 442</span>
+            </a>
           </div>
         </div>
 

@@ -104,7 +104,7 @@ export const DEFAULT_TRANSACTIONS: Transaction[] = [
 ];
 
 export const DEFAULT_CONFIG: AppConfig = {
-  appName: 'العزيز للمحاسبة',
+  appName: 'بيبرس للمحاسبة',
   currency: 'USD',
   financialYear: '2026',
   thermalPrinterWidth: '80mm'

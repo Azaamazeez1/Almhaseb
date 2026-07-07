@@ -283,7 +283,7 @@ export default function PartiesView({
               <div id="printable-statement" className="flex-1 overflow-x-auto">
                 {/* Print-only Header (hidden in screen, visible in print) */}
                 <div className="hidden print:block text-center border-b-2 border-double border-slate-800 pb-4 mb-6">
-                  <h1 className="font-bold text-xl">{activeSubTab === 'customers' ? 'العزيز للمحاسبة - كشف حساب زبون' : 'العزيز للمحاسبة - كشف حساب مورد'}</h1>
+                  <h1 className="font-bold text-xl">{activeSubTab === 'customers' ? 'بيبرس للمحاسبة - كشف حساب زبون' : 'بيبرس للمحاسبة - كشف حساب مورد'}</h1>
                   <p className="text-xs text-slate-500 mt-1">تاريخ الطباعة: {new Date().toLocaleDateString('ar-YE')}</p>
                   <div className="grid grid-cols-2 text-right mt-4 text-sm gap-2">
                     <span>الاسم: {selectedParty.name}</span>
