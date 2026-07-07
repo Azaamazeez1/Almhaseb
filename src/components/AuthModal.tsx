@@ -10,7 +10,8 @@ import {
   LogIn,
   UserPlus,
   Phone,
-  Loader2
+  Loader2,
+  CloudOff
 } from 'lucide-react';
 import { UserAccount } from '../types';
 import { isSupabaseConfigured, dbSaveUserAccount, dbGetUserAccount } from '../lib/supabase';
@@ -499,6 +500,19 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModal
             </button>
           </p>
         </div>
+
+        {/* Local / Offline Mode Warning Info Box when Supabase is not configured */}
+        {!isSupabaseConfigured() && (
+          <div className="mt-4 p-3 bg-amber-50 border border-amber-100 rounded-xl text-[10px] text-amber-800 font-bold leading-relaxed flex gap-2 items-start text-right" dir="rtl">
+            <CloudOff className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-amber-900 font-black mb-0.5">وضع العمل المحلي (أوفلاين) نشط حالياً</p>
+              <p className="text-amber-800/90 font-medium">
+                تنبيه: حسابك والبيانات المحفوظة يتم تخزينها داخل ذاكرة هذا الهاتف/المتصفح فقط. لتتمكن من تسجيل الدخول بنفس الحساب ومزامنة فواتيرك من أي هاتف آخر، يجب ربط قاعدة بيانات سحابية (Supabase) عبر لوحة التحكم والإعدادات.
+              </p>
+            </div>
+          </div>
+        )}
 
       </div>
     </div>

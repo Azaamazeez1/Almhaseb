@@ -3,8 +3,23 @@ import { Item, Customer, Supplier, Transaction, UserAccount } from '../types';
 
 // Read Supabase environment variables from Vite env config using safe any-cast
 const metaEnv = (import.meta as any).env || {};
-const supabaseUrl = metaEnv.VITE_SUPABASE_URL || '';
+let supabaseUrl = metaEnv.VITE_SUPABASE_URL || '';
 const supabaseAnonKey = metaEnv.VITE_SUPABASE_ANON_KEY || '';
+
+// Auto-parse the project ref if URL is not supplied but the new publishable key format is used
+if (!supabaseUrl && supabaseAnonKey && supabaseAnonKey.startsWith('sb_publishable_')) {
+  try {
+    const parts = supabaseAnonKey.split('_');
+    if (parts.length >= 3) {
+      const projectRef = parts[2];
+      if (projectRef && projectRef.trim().length > 0) {
+        supabaseUrl = `https://${projectRef.trim().toLowerCase()}.supabase.co`;
+      }
+    }
+  } catch (e) {
+    console.error('Failed to parse Supabase URL from publishable key:', e);
+  }
+}
 
 // Initialize client only if variables are available to prevent runtime app crashes
 export const supabase = (supabaseUrl && supabaseAnonKey) 
