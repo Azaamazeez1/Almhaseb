@@ -84,7 +84,18 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModal
               return;
             }
 
-            setError(`فشل تسجيل الدخول السحابي: ${authError.message}`);
+            let friendlyError = authError.message;
+            if (friendlyError.toLowerCase().includes('email not confirmed')) {
+              friendlyError = 'لم يتم تأكيد بريدك الإلكتروني بعد. يرجى مراجعة صندوق الوارد وتفعيل الحساب، أو قم بتعطيل ميزة "تأكيد البريد الإلكتروني" (Confirm email) في لوحة تحكم Supabase لتسجيل الدخول الفوري دون تفعيل.';
+            } else if (friendlyError.toLowerCase().includes('invalid login credentials') || friendlyError.toLowerCase().includes('invalid credentials')) {
+              friendlyError = 'عذراً، البريد الإلكتروني أو كلمة المرور غير صحيحة.';
+            } else if (friendlyError.toLowerCase().includes('user not found')) {
+              friendlyError = 'هذا الحساب غير مسجل لدينا. يرجى إنشاء حساب جديد أولاً.';
+            } else {
+              friendlyError = `فشل تسجيل الدخول السحابي: ${authError.message}`;
+            }
+
+            setError(friendlyError);
             setLoading(false);
             return;
           }
@@ -201,7 +212,13 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModal
           });
 
           if (authError) {
-            setError(`فشل التسجيل السحابي: ${authError.message}`);
+            let friendlyError = authError.message;
+            if (friendlyError.toLowerCase().includes('user already registered') || friendlyError.toLowerCase().includes('already exists')) {
+              friendlyError = 'هذا البريد الإلكتروني مسجل بالفعل لدينا. يرجى تسجيل الدخول أو استخدام بريد آخر.';
+            } else {
+              friendlyError = `فشل التسجيل السحابي: ${authError.message}`;
+            }
+            setError(friendlyError);
             setLoading(false);
             return;
           }
@@ -222,7 +239,13 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModal
             return;
           }
 
-          setSuccess('تم إنشاء حسابك السحابي بنجاح! جاري الدخول...');
+          // Check if Supabase requires email verification (session will be null but user is created)
+          const requiresConfirmation = data?.user && !data?.session;
+          if (requiresConfirmation) {
+            setSuccess('تم إنشاء حسابك السحابي بنجاح! تم إرسال رابط تفعيل إلى بريدك الإلكتروني. (يمكنك البدء بالاستخدام الآن، ولكن تذكر تفعيله للتمكن من تسجيل الدخول من أجهزة أخرى).');
+          } else {
+            setSuccess('تم إنشاء حسابك السحابي بنجاح! جاري الدخول...');
+          }
           setTimeout(() => {
             onLoginSuccess(profile);
             onClose();

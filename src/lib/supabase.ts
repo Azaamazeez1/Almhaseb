@@ -1,10 +1,11 @@
 import { createClient } from '@supabase/supabase-js';
 import { Item, Customer, Supplier, Transaction, UserAccount } from '../types';
 
-// Read Supabase environment variables from Vite env config using safe any-cast
-const metaEnv = (import.meta as any).env || {};
-let supabaseUrl = metaEnv.VITE_SUPABASE_URL || '';
-const supabaseAnonKey = metaEnv.VITE_SUPABASE_ANON_KEY || '';
+// Read Supabase environment variables statically so Vite can replace them at build-time
+// @ts-ignore
+let supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+// @ts-ignore
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
 // Auto-parse the project ref if URL is not supplied but the new publishable key format is used
 if (!supabaseUrl && supabaseAnonKey && supabaseAnonKey.startsWith('sb_publishable_')) {
@@ -111,7 +112,16 @@ export async function dbSyncUpAllData(
     
     // Insert new items if any
     if (items.length > 0) {
-      const itemsToInsert = items.map(item => ({
+      // Deduplicate items on the fly by ID to prevent inserting duplicates in the same batch
+      const uniqueItemsMap = new Map<string, Item>();
+      items.forEach(item => {
+        if (item && item.id) {
+          uniqueItemsMap.set(item.id, item);
+        }
+      });
+      const uniqueItems = Array.from(uniqueItemsMap.values());
+
+      const itemsToInsert = uniqueItems.map(item => ({
         id: item.id,
         user_email: userEmail,
         name: item.name,
@@ -130,33 +140,39 @@ export async function dbSyncUpAllData(
     // 2. Sync Parties (Customers & Suppliers)
     await supabase.from('parties').delete().eq('user_email', userEmail);
 
-    const partiesToInsert: any[] = [];
+    const uniquePartiesMap = new Map<string, any>();
     
     customers.forEach(cust => {
-      partiesToInsert.push({
-        id: cust.id,
-        user_email: userEmail,
-        name: cust.name,
-        type: 'customer',
-        phone: cust.phone || '',
-        email: '',
-        address: '',
-        balance: cust.balance
-      });
+      if (cust && cust.id) {
+        uniquePartiesMap.set(cust.id, {
+          id: cust.id,
+          user_email: userEmail,
+          name: cust.name,
+          type: 'customer',
+          phone: cust.phone || '',
+          email: '',
+          address: '',
+          balance: cust.balance
+        });
+      }
     });
 
     suppliers.forEach(supp => {
-      partiesToInsert.push({
-        id: supp.id,
-        user_email: userEmail,
-        name: supp.name,
-        type: 'supplier',
-        phone: supp.phone || '',
-        email: '',
-        address: '',
-        balance: supp.balance
-      });
+      if (supp && supp.id) {
+        uniquePartiesMap.set(supp.id, {
+          id: supp.id,
+          user_email: userEmail,
+          name: supp.name,
+          type: 'supplier',
+          phone: supp.phone || '',
+          email: '',
+          address: '',
+          balance: supp.balance
+        });
+      }
     });
+
+    const partiesToInsert = Array.from(uniquePartiesMap.values());
 
     if (partiesToInsert.length > 0) {
       const { error: partyErr } = await supabase.from('parties').insert(partiesToInsert);
@@ -167,7 +183,15 @@ export async function dbSyncUpAllData(
     await supabase.from('transactions').delete().eq('user_email', userEmail);
 
     if (transactions.length > 0) {
-      const txsToInsert = transactions.map(tx => ({
+      const uniqueTransactionsMap = new Map<string, Transaction>();
+      transactions.forEach(tx => {
+        if (tx && tx.id) {
+          uniqueTransactionsMap.set(tx.id, tx);
+        }
+      });
+      const uniqueTransactions = Array.from(uniqueTransactionsMap.values());
+
+      const txsToInsert = uniqueTransactions.map(tx => ({
         id: tx.id,
         user_email: userEmail,
         type: tx.type,

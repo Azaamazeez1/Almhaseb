@@ -22,9 +22,10 @@ DROP POLICY IF EXISTS "Allow public read/write for user accounts" ON public.user
 CREATE POLICY "Allow public read/write for user accounts" ON public.user_accounts
     FOR ALL USING (true) WITH CHECK (true);
 
--- 3. CREATE INVENTORY ITEMS TABLE
-CREATE TABLE IF NOT EXISTS public.inventory_items (
-    id TEXT PRIMARY KEY DEFAULT uuid_generate_v4()::text,
+-- 3. CREATE INVENTORY ITEMS TABLE (With composite PRIMARY KEY to prevent conflicts between different users)
+DROP TABLE IF EXISTS public.inventory_items CASCADE;
+CREATE TABLE public.inventory_items (
+    id TEXT NOT NULL,
     user_email TEXT NOT NULL REFERENCES public.user_accounts(email) ON DELETE CASCADE,
     name TEXT NOT NULL,
     code TEXT,
@@ -33,7 +34,8 @@ CREATE TABLE IF NOT EXISTS public.inventory_items (
     quantity NUMERIC NOT NULL DEFAULT 0,
     unit TEXT NOT NULL,
     category TEXT,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
+    PRIMARY KEY (id, user_email)
 );
 
 -- Enable RLS for inventory_items
@@ -42,9 +44,10 @@ DROP POLICY IF EXISTS "Allow public read/write for items" ON public.inventory_it
 CREATE POLICY "Allow public read/write for items" ON public.inventory_items
     FOR ALL USING (true) WITH CHECK (true);
 
--- 4. CREATE CUSTOMERS & SUPPLIERS TABLE
-CREATE TABLE IF NOT EXISTS public.parties (
-    id TEXT PRIMARY KEY DEFAULT uuid_generate_v4()::text,
+-- 4. CREATE CUSTOMERS & SUPPLIERS TABLE (With composite PRIMARY KEY to prevent conflicts between different users)
+DROP TABLE IF EXISTS public.parties CASCADE;
+CREATE TABLE public.parties (
+    id TEXT NOT NULL,
     user_email TEXT NOT NULL REFERENCES public.user_accounts(email) ON DELETE CASCADE,
     name TEXT NOT NULL,
     type TEXT NOT NULL, -- 'customer' or 'supplier'
@@ -52,7 +55,8 @@ CREATE TABLE IF NOT EXISTS public.parties (
     email TEXT,
     address TEXT,
     balance NUMERIC NOT NULL DEFAULT 0,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
+    PRIMARY KEY (id, user_email)
 );
 
 -- Enable RLS for parties
@@ -61,9 +65,10 @@ DROP POLICY IF EXISTS "Allow public read/write for parties" ON public.parties;
 CREATE POLICY "Allow public read/write for parties" ON public.parties
     FOR ALL USING (true) WITH CHECK (true);
 
--- 5. CREATE TRANSACTIONS TABLE (Invoices & Vouchers)
-CREATE TABLE IF NOT EXISTS public.transactions (
-    id TEXT PRIMARY KEY DEFAULT uuid_generate_v4()::text,
+-- 5. CREATE TRANSACTIONS TABLE (With composite PRIMARY KEY to prevent conflicts between different users)
+DROP TABLE IF EXISTS public.transactions CASCADE;
+CREATE TABLE public.transactions (
+    id TEXT NOT NULL,
     user_email TEXT NOT NULL REFERENCES public.user_accounts(email) ON DELETE CASCADE,
     type TEXT NOT NULL, -- 'sale', 'purchase', 'receipt_voucher', 'payment_voucher', 'initial_balance', etc.
     invoice_number TEXT,
@@ -75,7 +80,8 @@ CREATE TABLE IF NOT EXISTS public.transactions (
     cash_paid NUMERIC DEFAULT 0,
     notes TEXT,
     items JSONB DEFAULT '[]'::jsonb,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
+    PRIMARY KEY (id, user_email)
 );
 
 -- Enable RLS for transactions
