@@ -7,7 +7,8 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- 2. CREATE USER ACCOUNTS TABLE
-CREATE TABLE IF NOT EXISTS public.user_accounts (
+DROP TABLE IF EXISTS public.user_accounts CASCADE;
+CREATE TABLE public.user_accounts (
     email TEXT PRIMARY KEY,
     full_name TEXT NOT NULL,
     company_name TEXT NOT NULL,
