@@ -76,7 +76,7 @@ export default function App() {
     setTransactions(initialState.transactions);
     setConfig(initialState.config);
 
-    // Load optionally authenticated user from localStorage if exists
+    // Load optionally authenticated user from localStorage if exists, or auto-create a device-based backup account
     const savedUser = localStorage.getItem('current_user');
     if (savedUser) {
       try {
@@ -84,6 +84,55 @@ export default function App() {
       } catch (e) {
         console.error('Error loading current_user from localStorage', e);
       }
+    } else {
+      // Auto-create a device-based backup account!
+      let deviceUuid = localStorage.getItem('device_backup_uuid');
+      if (!deviceUuid) {
+        deviceUuid = `dev-${Math.random().toString(36).substring(2, 11)}-${Date.now().toString().slice(-4)}`;
+        localStorage.setItem('device_backup_uuid', deviceUuid);
+      }
+
+      // Detect device model
+      const ua = navigator.userAgent;
+      let deviceType = 'جهاز ذكي';
+      if (/android/i.test(ua)) {
+        if (/samsung/i.test(ua)) deviceType = 'جوال سامسونج';
+        else if (/redmi|xiaomi/i.test(ua)) deviceType = 'جوال شاومي';
+        else if (/huawei/i.test(ua)) deviceType = 'جوال هواوي';
+        else deviceType = 'جوال أندرويد';
+      } else if (/iPad|iPhone|iPod/.test(ua)) {
+        deviceType = 'جوال آيفون';
+      } else if (/macintosh/i.test(ua)) {
+        deviceType = 'جهاز ماك';
+      } else if (/windows/i.test(ua)) {
+        deviceType = 'جهاز كمبيوتر (ويندوز)';
+      } else if (/linux/i.test(ua)) {
+        deviceType = 'جهاز كمبيوتر (لينكس)';
+      }
+
+      const shortUuid = deviceUuid.split('-')[1]?.toUpperCase() || 'DEV';
+      
+      const autoUser: UserAccount = {
+        email: `${deviceUuid}@bibars-cloud.com`,
+        fullName: `نسخة سحابية - ${deviceType}`,
+        companyName: `جهاز محاسبي [${shortUuid}]`,
+        countryRegion: 'مزامنة تلقائية',
+        phone: ''
+      };
+
+      localStorage.setItem('current_user', JSON.stringify(autoUser));
+      setCurrentUser(autoUser);
+
+      // Register with Supabase in the background
+      import('./lib/supabase').then(({ dbSaveUserAccount, isSupabaseConfigured }) => {
+        if (isSupabaseConfigured()) {
+          dbSaveUserAccount(autoUser).then(success => {
+            if (success) {
+              console.log('Successfully registered auto device backup profile on cloud:', autoUser.email);
+            }
+          });
+        }
+      });
     }
   }, []);
 

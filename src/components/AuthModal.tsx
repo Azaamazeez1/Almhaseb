@@ -1,20 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   X,
-  Mail,
-  Lock,
-  Building2,
-  User,
-  MapPin,
+  Smartphone,
+  Copy,
+  Check,
+  RefreshCw,
+  Download,
+  Cloud,
   CheckCircle2,
-  LogIn,
-  UserPlus,
-  Phone,
+  AlertTriangle,
   Loader2,
-  CloudOff
+  Info
 } from 'lucide-react';
 import { UserAccount } from '../types';
-import { isSupabaseConfigured, dbSaveUserAccount, dbGetUserAccount } from '../lib/supabase';
+import { isSupabaseConfigured, dbGetUserAccount, dbSaveUserAccount } from '../lib/supabase';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -23,304 +22,118 @@ interface AuthModalProps {
 }
 
 export default function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModalProps) {
-  const [isRegister, setIsRegister] = useState(false);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [companyName, setCompanyName] = useState('');
-  const [fullName, setFullName] = useState('');
-  const [countryRegion, setCountryRegion] = useState('');
-  const [phone, setPhone] = useState('');
-  
+  const [deviceCode, setDeviceCode] = useState('');
+  const [restoreCode, setRestoreCode] = useState('');
+  const [copied, setCopied] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [deviceModel, setDeviceModel] = useState('جهاز ذكي');
+
+  // Load current device info
+  useEffect(() => {
+    // Get device model and browser
+    const ua = navigator.userAgent;
+    let type = 'جهاز ذكي';
+    if (/android/i.test(ua)) {
+      if (/samsung/i.test(ua)) type = 'جوال سامسونج';
+      else if (/redmi|xiaomi/i.test(ua)) type = 'جوال شاومي';
+      else if (/huawei/i.test(ua)) type = 'جوال هواوي';
+      else type = 'جوال أندرويد';
+    } else if (/iPad|iPhone|iPod/.test(ua)) {
+      type = 'جوال آيفون / آيباد';
+    } else if (/macintosh/i.test(ua)) {
+      type = 'جهاز ماك';
+    } else if (/windows/i.test(ua)) {
+      type = 'جهاز كمبيوتر (ويندوز)';
+    } else if (/linux/i.test(ua)) {
+      type = 'جهاز كمبيوتر (لينكس)';
+    }
+    setDeviceModel(type);
+
+    // Get device backup id
+    const savedUser = localStorage.getItem('current_user');
+    if (savedUser) {
+      try {
+        const u: UserAccount = JSON.parse(savedUser);
+        // Extract the code from email e.g. dev-xxx@bibars-cloud.com -> dev-xxx
+        const codePart = u.email.split('@')[0];
+        setDeviceCode(codePart);
+      } catch (e) {
+        console.error(e);
+      }
+    } else {
+      const deviceUuid = localStorage.getItem('device_backup_uuid');
+      if (deviceUuid) {
+        setDeviceCode(`dev-${deviceUuid}`);
+      }
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
-  const handleLoginSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setSuccess('');
-    setLoading(true);
-
-    if (!email || !password) {
-      setError('يرجى ملء جميع الحقول المطلوبة.');
-      setLoading(false);
-      return;
-    }
-
-    try {
-      if (isSupabaseConfigured()) {
-        const { supabase } = await import('../lib/supabase');
-        if (supabase) {
-          // Attempt login via Supabase Auth
-          const { data, error: authError } = await supabase.auth.signInWithPassword({
-            email: email.trim(),
-            password: password
-          });
-
-          if (authError) {
-            // Check if user is registered in local storage as a fallback
-            const usersRaw = localStorage.getItem('registered_users');
-            const users = usersRaw ? JSON.parse(usersRaw) : [];
-            const matchedUser = users.find(
-              (u: any) => u.email.toLowerCase() === email.toLowerCase().trim() && u.password === password
-            );
-
-            if (matchedUser) {
-              setSuccess('تم تسجيل الدخول محلياً بنجاح! (الوضع السحابي غير متصل)');
-              setTimeout(() => {
-                onLoginSuccess({
-                  email: matchedUser.email,
-                  fullName: matchedUser.fullName,
-                  companyName: matchedUser.companyName,
-                  countryRegion: matchedUser.countryRegion,
-                  phone: matchedUser.phone
-                });
-                onClose();
-                resetForm();
-              }, 1200);
-              return;
-            }
-
-            let friendlyError = authError.message;
-            if (friendlyError.toLowerCase().includes('email not confirmed')) {
-              friendlyError = 'لم يتم تأكيد بريدك الإلكتروني بعد. يرجى مراجعة صندوق الوارد وتفعيل الحساب، أو قم بتعطيل ميزة "تأكيد البريد الإلكتروني" (Confirm email) في لوحة تحكم Supabase لتسجيل الدخول الفوري دون تفعيل.';
-            } else if (friendlyError.toLowerCase().includes('invalid login credentials') || friendlyError.toLowerCase().includes('invalid credentials')) {
-              friendlyError = 'عذراً، البريد الإلكتروني أو كلمة المرور غير صحيحة.';
-            } else if (friendlyError.toLowerCase().includes('user not found')) {
-              friendlyError = 'هذا الحساب غير مسجل لدينا. يرجى إنشاء حساب جديد أولاً.';
-            } else {
-              friendlyError = `فشل تسجيل الدخول السحابي: ${authError.message}`;
-            }
-
-            setError(friendlyError);
-            setLoading(false);
-            return;
-          }
-
-          // Fetch account details from db profile
-          const profile = await dbGetUserAccount(email);
-          if (profile) {
-            setSuccess('تم تسجيل الدخول السحابي بنجاح! مرحباً بك.');
-            setTimeout(() => {
-              onLoginSuccess(profile);
-              onClose();
-              resetForm();
-            }, 1200);
-            return;
-          } else {
-            // Profile entry missing in user_accounts, create it
-            const fallbackProfile: UserAccount = {
-              email: email.trim(),
-              fullName: data.user?.email?.split('@')[0] || 'مستخدم سحابي',
-              companyName: 'مؤسسة سحابية',
-              countryRegion: 'غير محدد',
-              phone: ''
-            };
-            await dbSaveUserAccount(fallbackProfile);
-            setSuccess('تم تسجيل الدخول السحابي بنجاح!');
-            setTimeout(() => {
-              onLoginSuccess(fallbackProfile);
-              onClose();
-              resetForm();
-            }, 1200);
-            return;
-          }
-        }
-      }
-
-      // Local storage fallback (standard flow)
-      const usersRaw = localStorage.getItem('registered_users');
-      const users = usersRaw ? JSON.parse(usersRaw) : [];
-      const matchedUser = users.find(
-        (u: any) => u.email.toLowerCase() === email.toLowerCase().trim() && u.password === password
-      );
-
-      if (matchedUser) {
-        setSuccess('تم تسجيل الدخول بنجاح! مرحباً بك.');
-        setTimeout(() => {
-          onLoginSuccess({
-            email: matchedUser.email,
-            fullName: matchedUser.fullName,
-            companyName: matchedUser.companyName,
-            countryRegion: matchedUser.countryRegion,
-            phone: matchedUser.phone
-          });
-          onClose();
-          resetForm();
-        }, 1200);
-      } else {
-        if (email.toLowerCase().trim() === 'demo@aziz.com' && password === '123456') {
-          const demoUser: UserAccount = {
-            email: 'demo@aziz.com',
-            fullName: 'بيبرس للمحاسبة ديمو',
-            companyName: 'مؤسسة بيبرس التجارية',
-            countryRegion: 'سوريا - دمشق',
-            phone: '981854442'
-          };
-          setSuccess('تم تسجيل الدخول بحساب تجريبي بنجاح!');
-          setTimeout(() => {
-            onLoginSuccess(demoUser);
-            onClose();
-            resetForm();
-          }, 1200);
-        } else {
-          setError('عذراً، البريد الإلكتروني أو كلمة المرور غير صحيحة.');
-        }
-      }
-    } catch (err: any) {
-      setError(`حدث خطأ أثناء الاتصال: ${err.message || err}`);
-    } finally {
-      setLoading(false);
-    }
+  const handleCopyCode = () => {
+    navigator.clipboard.writeText(deviceCode);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleRegisterSubmit = async (e: React.FormEvent) => {
+  const handleRestoreSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setSuccess('');
+    
+    const formattedCode = restoreCode.trim().toLowerCase();
+    if (!formattedCode) {
+      setError('الرجاء كتابة رمز النسخ الاحتياطي للجهاز الآخر.');
+      return;
+    }
+
+    if (formattedCode === deviceCode) {
+      setError('عذراً، هذا هو نفس رمز جهازك الحالي.');
+      return;
+    }
+
     setLoading(true);
 
-    if (!email || !password || !confirmPassword || !fullName || !companyName || !countryRegion || !phone) {
-      setError('يرجى ملء كافة الحقول المطلوبة لإنشاء الحساب.');
-      setLoading(false);
-      return;
-    }
-
-    if (password.length < 6) {
-      setError('يجب أن لا تقل كلمة المرور عن 6 أحرف.');
-      setLoading(false);
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      setError('كلمة المرور وتأكيدها غير متطابقين.');
-      setLoading(false);
-      return;
-    }
-
     try {
-      if (isSupabaseConfigured()) {
-        const { supabase } = await import('../lib/supabase');
-        if (supabase) {
-          // Register with Supabase Auth
-          const { data, error: authError } = await supabase.auth.signUp({
-            email: email.trim(),
-            password: password,
-            options: {
-              data: {
-                full_name: fullName.trim(),
-                company_name: companyName.trim(),
-                country_region: countryRegion.trim(),
-                phone: phone.trim()
-              }
-            }
-          });
-
-          if (authError) {
-            let friendlyError = authError.message;
-            if (friendlyError.toLowerCase().includes('user already registered') || friendlyError.toLowerCase().includes('already exists')) {
-              friendlyError = 'هذا البريد الإلكتروني مسجل بالفعل لدينا. يرجى تسجيل الدخول أو استخدام بريد آخر.';
-            } else {
-              friendlyError = `فشل التسجيل السحابي: ${authError.message}`;
-            }
-            setError(friendlyError);
-            setLoading(false);
-            return;
-          }
-
-          const profile: UserAccount = {
-            email: email.trim(),
-            fullName: fullName.trim(),
-            companyName: companyName.trim(),
-            countryRegion: countryRegion.trim(),
-            phone: phone.trim()
-          };
-
-          // Save profile to public.user_accounts table (or let the DB trigger handle it)
-          const saved = await dbSaveUserAccount(profile);
-          if (!saved) {
-            console.warn('Profile direct save failed; relying on database triggers to initialize the user account.');
-          }
-
-          // Check if Supabase requires email verification (session will be null but user is created)
-          const requiresConfirmation = data?.user && !data?.session;
-          if (requiresConfirmation) {
-            setSuccess('تم إنشاء حسابك السحابي بنجاح! تم إرسال رابط تفعيل إلى بريدك الإلكتروني. (يمكنك البدء بالاستخدام الآن، ولكن تذكر تفعيله للتمكن من تسجيل الدخول من أجهزة أخرى).');
-          } else {
-            setSuccess('تم إنشاء حسابك السحابي بنجاح! جاري الدخول...');
-          }
-          setTimeout(() => {
-            onLoginSuccess(profile);
-            onClose();
-            resetForm();
-          }, 1500);
-          return;
-        }
-      }
-
-      // Local storage fallback
-      const usersRaw = localStorage.getItem('registered_users');
-      const users = usersRaw ? JSON.parse(usersRaw) : [];
-      
-      const userExists = users.some((u: any) => u.email.toLowerCase() === email.toLowerCase().trim());
-      if (userExists) {
-        setError('هذا البريد الإلكتروني مسجل مسبقاً لدينا.');
+      if (!isSupabaseConfigured()) {
+        setError('قاعدة البيانات السحابية (Supabase) غير متصلة بعد. يرجى تهيئتها أولاً.');
         setLoading(false);
         return;
       }
 
-      const newAccount = {
-        email: email.trim(),
-        password,
-        fullName: fullName.trim(),
-        companyName: companyName.trim(),
-        countryRegion: countryRegion.trim(),
-        phone: phone.trim()
-      };
+      // Reconstruct the email for this code
+      let targetEmail = formattedCode;
+      if (!targetEmail.includes('@')) {
+        targetEmail = `${formattedCode}@bibars-cloud.com`;
+      }
 
-      users.push(newAccount);
-      localStorage.setItem('registered_users', JSON.stringify(users));
-
-      setSuccess('تم إنشاء حسابك الجديد بنجاح! جاري تسجيل الدخول...');
-      
-      setTimeout(() => {
-        onLoginSuccess({
-          email: newAccount.email,
-          fullName: newAccount.fullName,
-          companyName: newAccount.companyName,
-          countryRegion: newAccount.countryRegion,
-          phone: newAccount.phone
-        });
-        onClose();
-        resetForm();
-      }, 1500);
+      // Attempt to fetch profile for that code
+      const profile = await dbGetUserAccount(targetEmail);
+      if (profile) {
+        setSuccess('تم العثور على النسخة الاحتياطية بنجاح! جاري استيراد ومزامنة البيانات...');
+        setTimeout(() => {
+          onLoginSuccess(profile);
+          onClose();
+          setRestoreCode('');
+          setError('');
+          setSuccess('');
+          setLoading(false);
+        }, 1500);
+      } else {
+        setError('عذراً، لم يتم العثور على أي نسخة احتياطية سحابية مسجلة بهذا الرمز. يرجى التأكد من كتابة الرمز بشكل صحيح.');
+        setLoading(false);
+      }
     } catch (err: any) {
-      setError(`حدث خطأ أثناء إنشاء الحساب: ${err.message || err}`);
-    } finally {
+      setError(`فشل الاتصال بقاعدة البيانات السحابية: ${err.message || err}`);
       setLoading(false);
     }
   };
 
-  const resetForm = () => {
-    setEmail('');
-    setPassword('');
-    setConfirmPassword('');
-    setCompanyName('');
-    setFullName('');
-    setCountryRegion('');
-    setPhone('');
-    setError('');
-    setSuccess('');
-    setLoading(false);
-  };
-
-
   return (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-[9999] flex items-center justify-center p-3 overflow-y-auto animate-in fade-in duration-200" dir="rtl">
-      <div className="bg-white rounded-2xl max-w-[370px] sm:max-w-[420px] w-full p-5 sm:p-6 shadow-2xl border border-slate-100 relative text-right flex flex-col my-auto animate-in fade-in zoom-in-95 duration-250">
+      <div className="bg-white rounded-[24px] max-w-[420px] w-full p-6 shadow-2xl border border-slate-100 relative text-right flex flex-col my-auto animate-in fade-in zoom-in-95 duration-250">
         
         {/* Close Button */}
         <button
@@ -332,216 +145,112 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModal
         </button>
 
         {/* Modal Header */}
-        <div className="text-center mb-4 mt-1">
-          <div className="w-11 h-11 bg-gradient-to-br from-emerald-500 to-teal-700 text-white rounded-xl flex items-center justify-center mx-auto mb-2 shadow-md shadow-emerald-100">
-            {isRegister ? <UserPlus className="h-5 w-5" /> : <LogIn className="h-5 w-5" />}
+        <div className="text-center mb-5 mt-1">
+          <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-teal-700 text-white rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-md shadow-emerald-100">
+            <Cloud className="h-6 w-6 animate-pulse" />
           </div>
-          <h2 className="font-black text-lg text-slate-800">
-            {isRegister ? 'إنشاء حساب جديد' : 'تسجيل الدخول'}
+          <h2 className="font-black text-base text-slate-800">
+            النسخ الاحتياطي السحابي التلقائي
           </h2>
-          <p className="text-[10px] text-slate-500 font-bold mt-0.5 max-w-[280px] mx-auto leading-relaxed">
-            {isRegister 
-              ? 'سجل حسابك لتخصيص بيانات مؤسستك وحفظها بشكل متكامل' 
-              : 'سجل دخولك للوصول إلى نظام بيبرس المحاسبي وإدارة عملياتك'}
+          <p className="text-[10px] text-slate-500 font-bold mt-1 max-w-[320px] mx-auto leading-relaxed">
+            تم إلغاء شاشات التسجيل والتعقيد! الآن يقوم البرنامج بحفظ ونسخ بياناتك السحابية تلقائياً وبأمان تام استناداً إلى رمز وهوية جهازك الحالي.
           </p>
         </div>
 
         {/* Success/Error Alerts */}
         {error && (
-          <div className="mb-3.5 p-2.5 bg-rose-50 border border-rose-100 rounded-lg text-[11px] font-bold text-rose-600 text-center animate-in slide-in-from-top-2">
+          <div className="mb-4 p-3 bg-rose-50 border border-rose-100 rounded-xl text-[11px] font-bold text-rose-600 text-center animate-in slide-in-from-top-2">
             {error}
           </div>
         )}
         {success && (
-          <div className="mb-3.5 p-2.5 bg-emerald-50 border border-emerald-100 rounded-lg text-[11px] font-bold text-emerald-600 text-center flex items-center justify-center gap-1.5 animate-in slide-in-from-top-2">
-            <CheckCircle2 className="h-3.5 w-3.5 shrink-0 animate-bounce" />
+          <div className="mb-4 p-3 bg-emerald-50 border border-emerald-100 rounded-xl text-[11px] font-bold text-emerald-600 text-center flex items-center justify-center gap-1.5 animate-in slide-in-from-top-2">
+            <CheckCircle2 className="h-4 w-4 shrink-0 animate-bounce text-emerald-600" />
             <span>{success}</span>
           </div>
         )}
 
-        {/* Forms */}
-        <form onSubmit={isRegister ? handleRegisterSubmit : handleLoginSubmit} className="space-y-2.5">
-          
-          {/* Email input - required always */}
-          <div>
-            <label className="block text-[11px] font-black text-slate-700 mb-1">البريد الإلكتروني <span className="text-rose-500">*</span></label>
-            <div className="relative">
-              <span className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400">
-                <Mail className="h-3.5 w-3.5" />
-              </span>
-              <input
-                type="email"
-                placeholder="example@mail.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                disabled={loading}
-                className="w-full pl-3 pr-9 py-2 rounded-lg border border-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20 text-xs font-bold bg-slate-50/50 outline-none transition-all placeholder:text-slate-300 disabled:opacity-70"
-                required
-              />
+        {/* Device Information Card */}
+        <div className="bg-gradient-to-br from-emerald-50/50 to-teal-50/30 border border-emerald-100 rounded-2xl p-4 mb-5 text-right relative overflow-hidden">
+          <div className="flex items-center justify-between mb-3 border-b border-emerald-100/50 pb-2.5">
+            <div className="flex items-center gap-2">
+              <Smartphone className="h-4 w-4 text-emerald-600" />
+              <span className="text-xs font-black text-slate-700">هوية الجهاز الحالي للتخزين:</span>
             </div>
+            <span className="text-[9px] font-black text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full">
+              {deviceModel}
+            </span>
           </div>
 
-          {/* Password input - required always */}
-          <div>
-            <label className="block text-[11px] font-black text-slate-700 mb-1">كلمة السر <span className="text-rose-500">*</span></label>
-            <div className="relative">
-              <span className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400">
-                <Lock className="h-3.5 w-3.5" />
-              </span>
-              <input
-                type="password"
-                placeholder="••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                disabled={loading}
-                className="w-full pl-3 pr-9 py-2 rounded-lg border border-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20 text-xs font-bold bg-slate-50/50 outline-none transition-all placeholder:text-slate-300 disabled:opacity-70"
-                required
-              />
+          <div className="space-y-1.5">
+            <label className="block text-[10px] font-bold text-slate-400">رمز النسخ الاحتياطي السحابي الخاص بك:</label>
+            <div className="flex gap-2">
+              <div className="flex-1 bg-slate-100 border border-slate-200 rounded-xl px-3.5 py-2 font-mono text-xs font-bold text-slate-700 text-center select-all flex items-center justify-center">
+                {deviceCode || 'جاري التوليد...'}
+              </div>
+              <button
+                type="button"
+                onClick={handleCopyCode}
+                className="p-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-sm transition-all flex items-center justify-center cursor-pointer active:scale-95"
+                title="نسخ رمز الجهاز"
+              >
+                {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+              </button>
             </div>
+            <p className="text-[9px] font-bold text-slate-400 leading-normal mt-1">
+              💡 احتفظ بهذا الرمز! يمكنك كتابته في أي هاتف آخر أو متصفح آخر لاسترجاع وتنزيل كافة فواتيرك وحساباتك بنقرة واحدة.
+            </p>
           </div>
-
-          {/* Registration specific fields */}
-          {isRegister && (
-            <>
-              {/* Confirm Password */}
-              <div>
-                <label className="block text-[11px] font-black text-slate-700 mb-1">تأكيد كلمة السر <span className="text-rose-500">*</span></label>
-                <div className="relative">
-                  <span className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400">
-                    <Lock className="h-3.5 w-3.5" />
-                  </span>
-                  <input
-                    type="password"
-                    placeholder="••••••"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    disabled={loading}
-                    className="w-full pl-3 pr-9 py-2 rounded-lg border border-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20 text-xs font-bold bg-slate-50/50 outline-none transition-all placeholder:text-slate-300 disabled:opacity-70"
-                    required
-                  />
-                </div>
-              </div>
-
-              {/* Full Name (اسم الشخص الثلاثي) */}
-              <div>
-                <label className="block text-[11px] font-black text-slate-700 mb-1">اسم الشخص الثلاثي <span className="text-rose-500">*</span></label>
-                <div className="relative">
-                  <span className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400">
-                    <User className="h-3.5 w-3.5" />
-                  </span>
-                  <input
-                    type="text"
-                    placeholder="محمد علي أحمد"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    disabled={loading}
-                    className="w-full pl-3 pr-9 py-2 rounded-lg border border-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20 text-xs font-bold bg-slate-50/50 outline-none transition-all placeholder:text-slate-300 disabled:opacity-70"
-                    required
-                  />
-                </div>
-              </div>
-
-              {/* Company Name (اسم الشركة) */}
-              <div>
-                <label className="block text-[11px] font-black text-slate-700 mb-1">اسم الشركة <span className="text-rose-500">*</span></label>
-                <div className="relative">
-                  <span className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400">
-                    <Building2 className="h-3.5 w-3.5" />
-                  </span>
-                  <input
-                    type="text"
-                    placeholder="شركة بيبرس المحدودة"
-                    value={companyName}
-                    onChange={(e) => setCompanyName(e.target.value)}
-                    disabled={loading}
-                    className="w-full pl-3 pr-9 py-2 rounded-lg border border-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20 text-xs font-bold bg-slate-50/50 outline-none transition-all placeholder:text-slate-300 disabled:opacity-70"
-                    required
-                  />
-                </div>
-              </div>
-
-              {/* Country and Area (خانة لكتابة البلد والمنطقة) */}
-              <div>
-                <label className="block text-[11px] font-black text-slate-700 mb-1">البلد والمنطقة <span className="text-rose-500">*</span></label>
-                <div className="relative">
-                  <span className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400">
-                    <MapPin className="h-3.5 w-3.5" />
-                  </span>
-                  <input
-                    type="text"
-                    placeholder="اليمن - صنعاء"
-                    value={countryRegion}
-                    onChange={(e) => setCountryRegion(e.target.value)}
-                    disabled={loading}
-                    className="w-full pl-3 pr-9 py-2 rounded-lg border border-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20 text-xs font-bold bg-slate-50/50 outline-none transition-all placeholder:text-slate-300 disabled:opacity-70"
-                    required
-                  />
-                </div>
-              </div>
-
-              {/* Phone Number (رقم الهاتف) */}
-              <div>
-                <label className="block text-[11px] font-black text-slate-700 mb-1">رقم الهاتف <span className="text-rose-500">*</span></label>
-                <div className="relative">
-                  <span className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400">
-                    <Phone className="h-3.5 w-3.5" />
-                  </span>
-                  <input
-                    type="tel"
-                    placeholder="981854442"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    disabled={loading}
-                    className="w-full pl-3 pr-9 py-2 rounded-lg border border-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20 text-xs font-bold bg-slate-50/50 outline-none transition-all placeholder:text-slate-300 disabled:opacity-70"
-                    required
-                  />
-                </div>
-              </div>
-            </>
-          )}
-
-          {/* Submit Button */}
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-2.5 px-4 bg-gradient-to-r from-emerald-600 to-teal-700 text-white rounded-lg text-xs font-black shadow-md shadow-emerald-100 hover:opacity-95 active:scale-98 transition-all cursor-pointer select-none mt-3 flex items-center justify-center gap-2 disabled:opacity-75 disabled:cursor-not-allowed"
-          >
-            {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-            <span>{isRegister ? 'تسجيل وإنشاء الحساب' : 'تسجيل الدخول'}</span>
-          </button>
-        </form>
-
-        {/* Toggle between Register & Login */}
-        <div className="mt-4 pt-4 border-t border-slate-100 text-center">
-          <p className="text-[11px] text-slate-500 font-bold">
-            {isRegister ? 'هل لديك حساب بالفعل؟' : 'ليس لديك حساب حتى الآن؟'}
-            <button
-              type="button"
-              disabled={loading}
-              onClick={() => {
-                setIsRegister(!isRegister);
-                setError('');
-                setSuccess('');
-              }}
-              className="text-emerald-600 hover:text-emerald-700 font-black mr-1.5 underline cursor-pointer focus:outline-none disabled:opacity-50"
-            >
-              {isRegister ? 'تسجيل الدخول هنا' : 'إنشاء حساب جديد'}
-            </button>
-          </p>
         </div>
 
-        {/* Local / Offline Mode Warning Info Box when Supabase is not configured */}
-        {!isSupabaseConfigured() && (
-          <div className="mt-4 p-3 bg-amber-50 border border-amber-100 rounded-xl text-[10px] text-amber-800 font-bold leading-relaxed flex gap-2 items-start text-right" dir="rtl">
-            <CloudOff className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
-            <div>
-              <p className="text-amber-900 font-black mb-0.5">وضع العمل المحلي (أوفلاين) نشط حالياً</p>
-              <p className="text-amber-800/90 font-medium">
-                تنبيه: حسابك والبيانات المحفوظة يتم تخزينها داخل ذاكرة هذا الهاتف/المتصفح فقط. لتتمكن من تسجيل الدخول بنفس الحساب ومزامنة فواتيرك من أي هاتف آخر، يجب ربط قاعدة بيانات سحابية (Supabase) عبر لوحة التحكم والإعدادات.
-              </p>
+        {/* Restore Backup Section */}
+        <div className="border-t border-slate-100 pt-4">
+          <h3 className="font-black text-xs text-slate-800 mb-2 flex items-center gap-1.5">
+            <Download className="h-4 w-4 text-teal-600" />
+            <span>استرجاع نسخة احتياطية من جهاز آخر</span>
+          </h3>
+          <p className="text-[10px] font-bold text-slate-400 leading-relaxed mb-3">
+            هل قمت بتغيير هاتفك أو ترغب بمزامنة البيانات من جهازك السابق؟ اكتب الرمز هنا للبدء:
+          </p>
+
+          <form onSubmit={handleRestoreSubmit} className="space-y-3">
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="مثال: dev-xxxxxxxxx"
+                value={restoreCode}
+                onChange={(e) => setRestoreCode(e.target.value)}
+                disabled={loading}
+                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20 text-xs font-mono font-black text-center bg-slate-50 outline-none transition-all placeholder:text-slate-300 placeholder:font-sans disabled:opacity-70"
+                required
+              />
             </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-2.5 px-4 bg-gradient-to-r from-teal-600 to-emerald-700 text-white rounded-xl text-xs font-black shadow-md shadow-emerald-100 hover:opacity-95 active:scale-98 transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-75 disabled:cursor-not-allowed"
+            >
+              {loading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <RefreshCw className="h-3.5 w-3.5" />
+              )}
+              <span>تأكيد استرجاع البيانات ومزامنتها</span>
+            </button>
+          </form>
+        </div>
+
+        {/* Local Sync Mode Indicator */}
+        <div className="mt-4 p-3 bg-emerald-50/50 border border-emerald-100/40 rounded-xl text-[9px] text-emerald-800 font-bold leading-relaxed flex gap-2 items-start text-right">
+          <Info className="h-3.5 w-3.5 text-emerald-600 shrink-0 mt-0.5" />
+          <div>
+            <p className="text-emerald-900 font-black mb-0.5">مزامنة سحابية مستمرة وتلقائية</p>
+            <p className="text-emerald-800/90 font-medium">
+              البرنامج يقوم بنسخ كافة العمليات الجديدة على السحابة لحظياً عند الاتصال بالإنترنت.
+            </p>
           </div>
-        )}
+        </div>
 
       </div>
     </div>

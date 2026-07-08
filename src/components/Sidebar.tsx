@@ -20,7 +20,8 @@ import {
   LogIn,
   MapPin,
   Building2,
-  Smartphone
+  Smartphone,
+  Cloud
 } from 'lucide-react';
 import { UserAccount } from '../types';
 
@@ -131,34 +132,33 @@ export default function Sidebar({
                 <div className="absolute -left-4 -bottom-4 w-12 h-12 bg-emerald-500/5 rounded-full blur-xl"></div>
                 <div className="flex items-center gap-3">
                   <div className="h-10 w-10 rounded-full bg-gradient-to-br from-emerald-500 to-teal-700 text-white font-black text-xs flex items-center justify-center shadow-xs">
-                    {currentUser.fullName.trim().charAt(0)}
+                    <Cloud className="h-5 w-5" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <h4 className="text-xs font-black text-slate-800 truncate">
                       {currentUser.fullName}
                     </h4>
                     <p className="text-[10px] font-bold text-slate-400 truncate flex items-center gap-1">
-                      <Building2 className="h-2.5 w-2.5 text-emerald-600 shrink-0" />
-                      <span>{currentUser.companyName}</span>
+                      <Smartphone className="h-2.5 w-2.5 text-emerald-600 shrink-0" />
+                      <span>{currentUser.email.split('@')[0]}</span>
                     </p>
                     <p className="text-[9px] font-semibold text-teal-600 truncate flex items-center gap-1 mt-0.5">
                       <MapPin className="h-2.5 w-2.5 shrink-0" />
-                      <span>{currentUser.countryRegion}</span>
+                      <span>تخزين سحابي مباشر</span>
                     </p>
                   </div>
                 </div>
 
                 <div className="flex items-center justify-between border-t border-emerald-100/60 mt-3 pt-2.5">
-                  <span className="text-[10px] font-black text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full flex items-center gap-1.5">
+                  <span className="text-[9px] font-black text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full flex items-center gap-1">
                     <span className="h-1.5 w-1.5 bg-emerald-500 rounded-full animate-ping"></span>
-                    حساب نشط
+                    مزامنة تلقائية نشطة
                   </span>
                   <button
-                    onClick={onLogout}
-                    className="text-[10px] font-black text-rose-500 hover:text-rose-600 flex items-center gap-1 transition-colors cursor-pointer"
+                    onClick={onOpenAuthModal}
+                    className="text-[10px] font-black text-emerald-700 hover:text-emerald-800 flex items-center gap-1 transition-colors cursor-pointer bg-white px-2.5 py-1 rounded-lg border border-emerald-100 shadow-2xs"
                   >
-                    <LogOut className="h-3 w-3" />
-                    <span>تسجيل الخروج</span>
+                    <span>تفاصيل السحابة</span>
                   </button>
                 </div>
               </div>
@@ -167,14 +167,14 @@ export default function Sidebar({
               <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 text-right shadow-xs relative overflow-hidden">
                 <div className="flex items-start gap-3">
                   <div className="p-2 bg-slate-100 rounded-xl text-slate-400 shrink-0">
-                    <User className="h-4 w-4" />
+                    <Cloud className="h-4 w-4" />
                   </div>
                   <div className="space-y-1">
                     <h4 className="font-black text-xs text-slate-800 flex items-center gap-1.5">
-                      حساب السحابة <span className="text-[10px] font-normal text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded-md">اختياري</span>
+                      حفظ وسحابي تلقائي
                     </h4>
                     <p className="text-[10px] font-bold text-slate-400 leading-normal">
-                      سجل حسابك لتخصيص بيانات مؤسستك وحفظ تقاريرك بشكل مستقل.
+                      مزامنة تلقائية ومباشرة على السحابة لحفظ فواتيرك وحساباتك بأمان تام.
                     </p>
                   </div>
                 </div>
@@ -184,8 +184,8 @@ export default function Sidebar({
                   onClick={onOpenAuthModal}
                   className="w-full mt-3.5 py-2 px-4 bg-white hover:bg-slate-50 text-emerald-700 hover:text-emerald-800 border border-emerald-100 rounded-xl text-xs font-black transition-all cursor-pointer shadow-xs active:scale-98 flex items-center justify-center gap-1.5 select-none"
                 >
-                  <LogIn className="h-3.5 w-3.5" />
-                  <span>تسجيل الدخول / إنشاء حساب</span>
+                  <Smartphone className="h-3.5 w-3.5" />
+                  <span>تفاصيل النسخ السحابي للجهاز</span>
                 </button>
               </div>
             )}
