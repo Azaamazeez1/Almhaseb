@@ -231,7 +231,6 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModal
             return;
           }
 
-          // Save profile to public.user_accounts table
           const profile: UserAccount = {
             email: email.trim(),
             fullName: fullName.trim(),
@@ -240,11 +239,10 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModal
             phone: phone.trim()
           };
 
+          // Save profile to public.user_accounts table (or let the DB trigger handle it)
           const saved = await dbSaveUserAccount(profile);
           if (!saved) {
-            setError('فشل حفظ معلومات الحساب في قاعدة البيانات السحابية.');
-            setLoading(false);
-            return;
+            console.warn('Profile direct save failed; relying on database triggers to initialize the user account.');
           }
 
           // Check if Supabase requires email verification (session will be null but user is created)

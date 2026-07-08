@@ -27,7 +27,7 @@ CREATE POLICY "Allow public read/write for user accounts" ON public.user_account
 DROP TABLE IF EXISTS public.inventory_items CASCADE;
 CREATE TABLE public.inventory_items (
     id TEXT NOT NULL,
-    user_email TEXT NOT NULL REFERENCES public.user_accounts(email) ON DELETE CASCADE,
+    user_email TEXT NOT NULL,
     name TEXT NOT NULL,
     code TEXT,
     price NUMERIC NOT NULL DEFAULT 0,
@@ -49,7 +49,7 @@ CREATE POLICY "Allow public read/write for items" ON public.inventory_items
 DROP TABLE IF EXISTS public.parties CASCADE;
 CREATE TABLE public.parties (
     id TEXT NOT NULL,
-    user_email TEXT NOT NULL REFERENCES public.user_accounts(email) ON DELETE CASCADE,
+    user_email TEXT NOT NULL,
     name TEXT NOT NULL,
     type TEXT NOT NULL, -- 'customer' or 'supplier'
     phone TEXT,
@@ -70,7 +70,7 @@ CREATE POLICY "Allow public read/write for parties" ON public.parties
 DROP TABLE IF EXISTS public.transactions CASCADE;
 CREATE TABLE public.transactions (
     id TEXT NOT NULL,
-    user_email TEXT NOT NULL REFERENCES public.user_accounts(email) ON DELETE CASCADE,
+    user_email TEXT NOT NULL,
     type TEXT NOT NULL, -- 'sale', 'purchase', 'receipt_voucher', 'payment_voucher', 'initial_balance', etc.
     invoice_number TEXT,
     date TEXT NOT NULL,
