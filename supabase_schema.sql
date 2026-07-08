@@ -89,3 +89,32 @@ ALTER TABLE public.transactions ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow public read/write for transactions" ON public.transactions;
 CREATE POLICY "Allow public read/write for transactions" ON public.transactions
     FOR ALL USING (true) WITH CHECK (true);
+
+
+-- 6. AUTOMATIC TRIGGER FOR PROFILE CREATION ON SIGN-UP
+-- This automatically transfers user registration info from Supabase Auth to public.user_accounts
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS trigger AS $$
+BEGIN
+  INSERT INTO public.user_accounts (email, full_name, company_name, country_region, phone)
+  VALUES (
+    new.email,
+    COALESCE(new.raw_user_meta_data->>'full_name', split_part(new.email, '@', 1)),
+    COALESCE(new.raw_user_meta_data->>'company_name', 'مؤسسة جديدة'),
+    COALESCE(new.raw_user_meta_data->>'country_region', 'غير محدد'),
+    COALESCE(new.raw_user_meta_data->>'phone', '')
+  )
+  ON CONFLICT (email) DO UPDATE SET
+    full_name = EXCLUDED.full_name,
+    company_name = EXCLUDED.company_name,
+    country_region = EXCLUDED.country_region,
+    phone = EXCLUDED.phone;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Create the trigger
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();

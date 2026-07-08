@@ -208,7 +208,15 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModal
           // Register with Supabase Auth
           const { data, error: authError } = await supabase.auth.signUp({
             email: email.trim(),
-            password: password
+            password: password,
+            options: {
+              data: {
+                full_name: fullName.trim(),
+                company_name: companyName.trim(),
+                country_region: countryRegion.trim(),
+                phone: phone.trim()
+              }
+            }
           });
 
           if (authError) {
