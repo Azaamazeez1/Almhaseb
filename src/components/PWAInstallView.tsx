@@ -22,10 +22,12 @@ import {
 interface PWAInstallViewProps {
   appUrl?: string;
   onBack?: () => void;
+  deferredPrompt?: any;
+  onInstallSuccess?: () => void;
 }
 
-export default function PWAInstallView({ appUrl, onBack }: PWAInstallViewProps) {
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+export default function PWAInstallView({ appUrl, onBack, deferredPrompt: propDeferredPrompt, onInstallSuccess }: PWAInstallViewProps) {
+  const [localDeferredPrompt, setLocalDeferredPrompt] = useState<any>(null);
   const [isInstalled, setIsInstalled] = useState(false);
   const [showFullAbout, setShowFullAbout] = useState(false);
   const [showShareTooltip, setShowShareTooltip] = useState(false);
@@ -33,11 +35,13 @@ export default function PWAInstallView({ appUrl, onBack }: PWAInstallViewProps) 
   const currentOrigin = window.location.origin;
   const targetUrl = appUrl || currentOrigin;
 
+  const activeDeferredPrompt = propDeferredPrompt || localDeferredPrompt;
+
   useEffect(() => {
-    // Listen for beforeinstallprompt event
+    // Listen for beforeinstallprompt event as fallback
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
-      setDeferredPrompt(e);
+      setLocalDeferredPrompt(e);
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
@@ -53,17 +57,24 @@ export default function PWAInstallView({ appUrl, onBack }: PWAInstallViewProps) 
   }, []);
 
   const handleInstallClick = async () => {
-    if (!deferredPrompt) {
+    if (!activeDeferredPrompt) {
       alert('لتثبيت تطبيق "بيبرس للمحاسبة" على هاتفك مباشرة:\n\n1. إذا كنت تستخدم أندرويد: انقر على زر الخيارات (⋮) في أعلى المتصفح ثم اختر "تثبيت التطبيق" أو "إضافة للشاشة الرئيسية".\n2. إذا كنت تستخدم آيفون: انقر على زر مشاركة (Share) في أسفل متصفح سفاري ثم اختر "إضافة للشاشة الرئيسية" (Add to Home Screen).');
       return;
     }
     
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    
-    if (outcome === 'accepted') {
-      setIsInstalled(true);
-      setDeferredPrompt(null);
+    try {
+      activeDeferredPrompt.prompt();
+      const { outcome } = await activeDeferredPrompt.userChoice;
+      
+      if (outcome === 'accepted') {
+        setIsInstalled(true);
+        if (onInstallSuccess) {
+          onInstallSuccess();
+        }
+        setLocalDeferredPrompt(null);
+      }
+    } catch (err) {
+      console.error('Install prompt failed:', err);
     }
   };
 

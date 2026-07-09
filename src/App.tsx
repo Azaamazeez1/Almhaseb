@@ -298,15 +298,30 @@ export default function App() {
 
   // --- 5-Second PWA Install Prompt Banner State & Effect ---
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
 
   useEffect(() => {
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
     const isDismissed = localStorage.getItem('pwa_prompt_dismissed');
     if (!isDismissed) {
       const timer = setTimeout(() => {
         setShowInstallPrompt(true);
       }, 5000);
-      return () => clearTimeout(timer);
+      return () => {
+        window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+        clearTimeout(timer);
+      };
     }
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
   }, []);
 
   // --- Modals State ---
@@ -743,6 +758,8 @@ export default function App() {
           <PWAInstallView 
             appUrl="https://ais-pre-53r6c57liz46ey3f5ap5qv-162818379984.europe-west2.run.app" 
             onBack={() => setActiveTab('dashboard')}
+            deferredPrompt={deferredPrompt}
+            onInstallSuccess={() => setDeferredPrompt(null)}
           />
         );
 
@@ -794,9 +811,22 @@ export default function App() {
                 لاحقاً
               </button>
               <button
-                onClick={() => {
+                onClick={async () => {
                   setShowInstallPrompt(false);
-                  setActiveTab('pwa_install');
+                  if (deferredPrompt) {
+                    try {
+                      deferredPrompt.prompt();
+                      const { outcome } = await deferredPrompt.userChoice;
+                      if (outcome === 'accepted') {
+                        setDeferredPrompt(null);
+                      }
+                    } catch (err) {
+                      console.error('Programmatic PWA installation failed:', err);
+                      setActiveTab('pwa_install');
+                    }
+                  } else {
+                    setActiveTab('pwa_install');
+                  }
                 }}
                 className="px-4 py-2 bg-white text-[#01875f] hover:bg-emerald-50 rounded-xl transition-all shadow-md active:scale-95 cursor-pointer flex items-center gap-1.5"
               >
