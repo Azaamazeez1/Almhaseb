@@ -21,8 +21,11 @@ import {
   Info,
   XCircle,
   Cloud,
-  CloudOff
+  CloudOff,
+  Smartphone,
+  Download
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { getInitialState, saveAllStates, formatCurrency } from './utils';
 import { Item, Customer, Supplier, Transaction, AppConfig, UserAccount } from './types';
 
@@ -291,6 +294,19 @@ export default function App() {
     return () => {
       window.removeEventListener('popstate', handlePopState);
     };
+  }, []);
+
+  // --- 5-Second PWA Install Prompt Banner State & Effect ---
+  const [showInstallPrompt, setShowInstallPrompt] = useState(false);
+
+  useEffect(() => {
+    const isDismissed = localStorage.getItem('pwa_prompt_dismissed');
+    if (!isDismissed) {
+      const timer = setTimeout(() => {
+        setShowInstallPrompt(true);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
   }, []);
 
   // --- Modals State ---
@@ -726,6 +742,7 @@ export default function App() {
         return (
           <PWAInstallView 
             appUrl="https://ais-pre-53r6c57liz46ey3f5ap5qv-162818379984.europe-west2.run.app" 
+            onBack={() => setActiveTab('dashboard')}
           />
         );
 
@@ -736,6 +753,61 @@ export default function App() {
 
   return (
     <div dir="rtl" className="flex h-screen bg-slate-50 font-sans overflow-hidden">
+      {/* Floating PWA Install Notification Prompt */}
+      <AnimatePresence>
+        {showInstallPrompt && (
+          <motion.div
+            initial={{ opacity: 0, y: -80 }}
+            animate={{ opacity: 1, y: 16 }}
+            exit={{ opacity: 0, y: -80 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 180 }}
+            className="fixed top-0 left-4 right-4 md:left-auto md:right-6 md:w-[380px] bg-gradient-to-l from-[#01875f] to-teal-800 text-white rounded-2xl shadow-2xl p-4 border border-emerald-400/20 z-[9999] flex flex-col gap-3"
+          >
+            <div className="flex items-start gap-3">
+              <div className="bg-white/10 p-2.5 rounded-xl shrink-0 flex items-center justify-center">
+                <Smartphone className="h-5 w-5 text-emerald-200" />
+              </div>
+              <div className="flex-1 space-y-0.5">
+                <h4 className="font-bold text-xs">تثبيت تطبيق بيبرس للمحاسبة</h4>
+                <p className="text-[10px] text-emerald-100/90 leading-relaxed font-medium">
+                  ثبت التطبيق الآن على شاشة هاتفك الرئيسية للوصول السريع ومتابعة عملك في أي وقت وبدون إنترنت!
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setShowInstallPrompt(false);
+                  localStorage.setItem('pwa_prompt_dismissed', 'true');
+                }}
+                className="p-1 hover:bg-white/10 rounded-lg text-emerald-100 transition-colors cursor-pointer"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="flex justify-end gap-2 text-xs font-black">
+              <button
+                onClick={() => {
+                  setShowInstallPrompt(false);
+                  localStorage.setItem('pwa_prompt_dismissed', 'true');
+                }}
+                className="px-3.5 py-2 bg-transparent text-emerald-100 hover:text-white transition-colors cursor-pointer"
+              >
+                لاحقاً
+              </button>
+              <button
+                onClick={() => {
+                  setShowInstallPrompt(false);
+                  setActiveTab('pwa_install');
+                }}
+                className="px-4 py-2 bg-white text-[#01875f] hover:bg-emerald-50 rounded-xl transition-all shadow-md active:scale-95 cursor-pointer flex items-center gap-1.5"
+              >
+                <Download className="h-3.5 w-3.5" />
+                <span>تثبيت الآن</span>
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Sidebar navigation */}
       <Sidebar
         isOpen={sidebarOpen}
