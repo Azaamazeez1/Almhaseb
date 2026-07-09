@@ -302,6 +302,7 @@ export default function App() {
   const [newItemCost, setNewItemCost] = useState<string>('');
   const [newItemPrice, setNewItemPrice] = useState<string>('');
   const [newItemUnit, setNewItemUnit] = useState('حبة');
+  const [newItemStock, setNewItemStock] = useState<string>('');
 
   const [newPartyName, setNewPartyName] = useState('');
   const [newPartyPhone, setNewPartyPhone] = useState('');
@@ -499,6 +500,7 @@ export default function App() {
 
     const cost = parseFloat(newItemCost) || 0;
     const price = parseFloat(newItemPrice) || 0;
+    const initialStock = parseFloat(newItemStock) || 0;
 
     if (cost > price) {
       alert('عذراً! لا يمكن الحفظ لأن سعر الشراء (رأس المال) أعلى من سعر البيع المقترح (المبيع)، مما يعني حدوث خسارة على هذا الصنف. يرجى تعديل الأسعار أولاً لتجنب تسجيل خسائر.');
@@ -508,7 +510,7 @@ export default function App() {
     handleAddItem({
       code: newItemCode,
       name: newItemName,
-      stock: 0, // Starts at 0, purchase invoices or stock audits will increase it
+      stock: initialStock,
       unit: newItemUnit,
       unitCost: cost,
       salePrice: price,
@@ -522,8 +524,9 @@ export default function App() {
     setNewItemCost('');
     setNewItemPrice('');
     setNewItemUnit('حبة');
+    setNewItemStock('');
     setActiveModal(null);
-    alert('تمت إضافة الصنف بنجاح! يمكنك الآن توريده عن طريق فاتورة المشتريات لتسجيل الكميات.');
+    alert('تمت إضافة الصنف بنجاح!');
   };
 
   // Natively Add Customer/Supplier form submission
@@ -639,6 +642,7 @@ export default function App() {
               setNewItemCost('');
               setNewItemPrice('');
               setNewItemUnit('حبة');
+              setNewItemStock('');
               setActiveModal('item');
             }}
           />
@@ -931,8 +935,21 @@ export default function App() {
                 </div>
               </div>
 
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1">العدد (الكمية الابتدائية المتوفرة)</label>
+                <input
+                  id="modal-item-stock-input"
+                  type="number"
+                  min="0"
+                  placeholder="مثال: 0 أو 10 أو 100"
+                  value={newItemStock}
+                  onChange={(e) => setNewItemStock(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-center focus:outline-none focus:border-emerald-600 focus:bg-white transition-all font-bold"
+                />
+              </div>
+
               <div className="bg-emerald-50 text-emerald-800 text-[10px] p-3 rounded-xl border border-emerald-100 leading-relaxed">
-                * ملاحظة: يتم إنشاء الصنف الجديد بـ <strong>كمية صفرية</strong> تلقائياً. لتسجيل كميات البضائع وزيادتها، قم بإنشاء <strong>فاتورة مشتريات</strong> ترحيلية أو قم بتطبيق تعديل كمي في شاشة <strong>جرد البضائع</strong>.
+                * ملاحظة: يمكنك تعيين كمية ابتدائية (العدد) مباشرة الآن، أو تعديلها وزيادتها لاحقاً عبر <strong>فاتورة مشتريات</strong> ترحيلية أو من خلال شاشة <strong>جرد البضائع</strong>.
               </div>
 
               <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
