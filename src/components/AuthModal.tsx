@@ -158,6 +158,14 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModal
         </div>
 
         {/* Success/Error Alerts */}
+        {!isSupabaseConfigured() && (
+          <div className="mb-4 p-3 bg-amber-50 border border-amber-100 rounded-xl text-[10px] font-bold text-amber-800 text-right leading-relaxed animate-in slide-in-from-top-2">
+            ⚠️ <strong>قاعدة البيانات السحابية (Supabase) غير متصلة بعد.</strong>
+            <p className="mt-1 text-amber-700 font-medium">
+              يعمل البرنامج الآن محلياً بالكامل على جهازك. لتنشيط المزامنة السحابية والنسخ الاحتياطي التلقائي الفوري، يرجى ضبط مفاتيح Supabase في إعدادات المنصة.
+            </p>
+          </div>
+        )}
         {error && (
           <div className="mb-4 p-3 bg-rose-50 border border-rose-100 rounded-xl text-[11px] font-bold text-rose-600 text-center animate-in slide-in-from-top-2">
             {error}

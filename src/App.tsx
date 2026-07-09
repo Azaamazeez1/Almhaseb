@@ -54,6 +54,9 @@ export default function App() {
   // Load initial states
   const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'success' | 'error'>('idle');
   const [isSupabaseMode, setIsSupabaseMode] = useState(false);
+  const [hasAutoSyncedOnMount, setHasAutoSyncedOnMount] = useState(false);
+  const [currentUser, setCurrentUser] = useState<UserAccount | null>(null);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   useEffect(() => {
     import('./lib/supabase').then(({ isSupabaseConfigured }) => {
@@ -135,6 +138,86 @@ export default function App() {
       });
     }
   }, []);
+
+  // Automatic background backup on app startup
+  useEffect(() => {
+    if (isSupabaseMode && currentUser && !hasAutoSyncedOnMount) {
+      setHasAutoSyncedOnMount(true);
+      
+      const localState = getInitialState();
+      
+      import('./lib/supabase').then(({ dbSyncUpAllData, dbSyncDownAllData }) => {
+        setSyncStatus('syncing');
+        dbSyncDownAllData(currentUser.email).then(res => {
+          if (res.success && res.data) {
+            const hasCloudData = res.data.items.length > 0 || res.data.transactions.length > 0;
+            const hasLocalData = localState.items.length > 0 || localState.transactions.length > 0;
+            
+            if (!hasCloudData && hasLocalData) {
+              // Cloud is empty, but local has data. Upload local data automatically!
+              dbSyncUpAllData(
+                currentUser.email,
+                localState.items,
+                localState.customers,
+                localState.suppliers,
+                localState.transactions
+              ).then(upRes => {
+                if (upRes.success) {
+                  setSyncStatus('success');
+                  setTimeout(() => setSyncStatus('idle'), 3000);
+                  console.log('Successfully backed up all existing local data to cloud.');
+                } else {
+                  setSyncStatus('error');
+                }
+              });
+            } else if (hasCloudData && !hasLocalData) {
+              // Cloud has data, but local is empty (e.g. cache cleared). Restore cloud data automatically!
+              setItems(res.data.items);
+              setCustomers(res.data.customers);
+              setSuppliers(res.data.suppliers);
+              setTransactions(res.data.transactions);
+              
+              saveAllStates({
+                items: res.data.items,
+                customers: res.data.customers,
+                suppliers: res.data.suppliers,
+                transactions: res.data.transactions,
+                config: localState.config
+              });
+              
+              setSyncStatus('success');
+              setTimeout(() => setSyncStatus('idle'), 3000);
+              console.log('Successfully restored cloud backup to device.');
+            } else if (hasCloudData && hasLocalData) {
+              // Both have data. Silently update cloud to ensure latest offline changes are backed up.
+              dbSyncUpAllData(
+                currentUser.email,
+                localState.items,
+                localState.customers,
+                localState.suppliers,
+                localState.transactions
+              ).then(upRes => {
+                if (upRes.success) {
+                  setSyncStatus('success');
+                  setTimeout(() => setSyncStatus('idle'), 3000);
+                  console.log('Successfully synced local data up to cloud backup.');
+                } else {
+                  setSyncStatus('error');
+                }
+              });
+            } else {
+              // Both are empty
+              setSyncStatus('idle');
+            }
+          } else {
+            setSyncStatus('error');
+          }
+        }).catch(() => {
+          setSyncStatus('error');
+        });
+      });
+    }
+  }, [isSupabaseMode, currentUser, hasAutoSyncedOnMount]);
 
   // Sync to local storage
   const persistState = (
@@ -236,8 +319,7 @@ export default function App() {
   } | null>(null);
 
   // --- Authentication States (Optional Cloud Account) ---
-  const [currentUser, setCurrentUser] = useState<UserAccount | null>(null);
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+
 
   useEffect(() => {
     window.alert = (message: string) => {
