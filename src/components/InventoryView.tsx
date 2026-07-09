@@ -36,8 +36,8 @@ export default function InventoryView({
 }: InventoryViewProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
-  const [editedCost, setEditedCost] = useState<number>(0);
-  const [editedSalePrice, setEditedSalePrice] = useState<number>(0);
+  const [editedCost, setEditedCost] = useState<string>('');
+  const [editedSalePrice, setEditedSalePrice] = useState<string>('');
   const [editedStock, setEditedStock] = useState<number>(0);
   const [editedName, setEditedName] = useState<string>('');
 
@@ -46,8 +46,8 @@ export default function InventoryView({
   const [modalEditName, setModalEditName] = useState('');
   const [modalEditCode, setModalEditCode] = useState('');
   const [modalEditStock, setModalEditStock] = useState(0);
-  const [modalEditCost, setModalEditCost] = useState(0);
-  const [modalEditPrice, setModalEditPrice] = useState(0);
+  const [modalEditCost, setModalEditCost] = useState<string>('');
+  const [modalEditPrice, setModalEditPrice] = useState<string>('');
   const [modalEditUnit, setModalEditUnit] = useState('حبة');
   const [modalEditCurrency, setModalEditCurrency] = useState('USD');
 
@@ -56,8 +56,8 @@ export default function InventoryView({
     setModalEditName(item.name);
     setModalEditCode(item.code);
     setModalEditStock(item.stock);
-    setModalEditCost(item.unitCost);
-    setModalEditPrice(item.salePrice);
+    setModalEditCost(item.unitCost.toString());
+    setModalEditPrice(item.salePrice.toString());
     setModalEditUnit(item.unit || 'حبة');
     setModalEditCurrency(item.currency || 'USD');
   };
@@ -77,22 +77,24 @@ export default function InventoryView({
 
   const startEditing = (item: Item) => {
     setEditingItemId(item.id);
-    setEditedCost(item.unitCost);
-    setEditedSalePrice(item.salePrice);
+    setEditedCost(item.unitCost.toString());
+    setEditedSalePrice(item.salePrice.toString());
     setEditedStock(item.stock);
     setEditedName(item.name);
   };
 
   const saveEditing = (item: Item) => {
-    if (editedCost > editedSalePrice) {
+    const cost = parseFloat(editedCost) || 0;
+    const price = parseFloat(editedSalePrice) || 0;
+    if (cost > price) {
       alert('عذراً! لا يمكن الحفظ لأن سعر الشراء (رأس المال) أعلى من سعر البيع (المبيع)، مما يعني حدوث خسارة على هذا الصنف. يرجى تعديل الأسعار أولاً لتجنب تسجيل خسائر.');
       return;
     }
     onUpdateItem({
       ...item,
       name: editedName,
-      unitCost: editedCost,
-      salePrice: editedSalePrice,
+      unitCost: cost,
+      salePrice: price,
       stock: editedStock
     });
     setEditingItemId(null);
@@ -383,7 +385,7 @@ export default function InventoryView({
                             type="number"
                             step="0.01"
                             value={editedCost}
-                            onChange={(e) => setEditedCost(parseFloat(e.target.value) || 0)}
+                            onChange={(e) => setEditedCost(e.target.value)}
                             className="px-2 py-1 bg-white border border-slate-300 rounded text-sm w-20 text-left font-sans focus:outline-emerald-600"
                           />
                         </div>
@@ -400,7 +402,7 @@ export default function InventoryView({
                           type="number"
                           step="0.01"
                           value={editedSalePrice}
-                          onChange={(e) => setEditedSalePrice(parseFloat(e.target.value) || 0)}
+                          onChange={(e) => setEditedSalePrice(e.target.value)}
                           className="px-2 py-1 bg-white border border-slate-300 rounded text-sm w-20 text-left font-sans focus:outline-emerald-600"
                         />
                       ) : (
@@ -488,13 +490,19 @@ export default function InventoryView({
             <form onSubmit={(e) => {
               e.preventDefault();
               if (!modalEditName || !modalEditCode) return;
+              const cost = parseFloat(modalEditCost) || 0;
+              const price = parseFloat(modalEditPrice) || 0;
+              if (cost > price) {
+                alert('عذراً! لا يمكن الحفظ لأن سعر الشراء (رأس المال) أعلى من سعر البيع (المبيع)، مما يعني حدوث خسارة على هذا الصنف. يرجى تعديل الأسعار أولاً لتجنب تسجيل خسائر.');
+                return;
+              }
               onUpdateItem({
                 ...modalEditingItem,
                 name: modalEditName,
                 code: modalEditCode,
                 stock: modalEditStock,
-                unitCost: modalEditCost,
-                salePrice: modalEditPrice,
+                unitCost: cost,
+                salePrice: price,
                 unit: modalEditUnit,
                 currency: modalEditCurrency
               });
@@ -567,7 +575,7 @@ export default function InventoryView({
                     step="0.01"
                     required
                     value={modalEditCost}
-                    onChange={(e) => setModalEditCost(parseFloat(e.target.value) || 0)}
+                    onChange={(e) => setModalEditCost(e.target.value)}
                     className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-center focus:outline-none focus:border-teal-600 focus:bg-white transition-all font-bold"
                   />
                 </div>
@@ -579,7 +587,7 @@ export default function InventoryView({
                     step="0.01"
                     required
                     value={modalEditPrice}
-                    onChange={(e) => setModalEditPrice(parseFloat(e.target.value) || 0)}
+                    onChange={(e) => setModalEditPrice(e.target.value)}
                     className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-center focus:outline-none focus:border-teal-600 focus:bg-white transition-all font-bold"
                   />
                 </div>

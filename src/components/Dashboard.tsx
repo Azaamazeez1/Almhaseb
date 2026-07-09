@@ -68,8 +68,8 @@ export default function Dashboard({
   const [editName, setEditName] = useState('');
   const [editCode, setEditCode] = useState('');
   const [editStock, setEditStock] = useState(0);
-  const [editCost, setEditCost] = useState(0);
-  const [editPrice, setEditPrice] = useState(0);
+  const [editCost, setEditCost] = useState<string>('');
+  const [editPrice, setEditPrice] = useState<string>('');
   const [editUnit, setEditUnit] = useState('حبة');
   const [editCurrency, setEditCurrency] = useState('USD');
 
@@ -78,8 +78,8 @@ export default function Dashboard({
     setEditName(item.name);
     setEditCode(item.code);
     setEditStock(item.stock);
-    setEditCost(item.unitCost);
-    setEditPrice(item.salePrice);
+    setEditCost(item.unitCost.toString());
+    setEditPrice(item.salePrice.toString());
     setEditUnit(item.unit || 'حبة');
     setEditCurrency(item.currency || 'USD');
   };
@@ -829,7 +829,9 @@ export default function Dashboard({
             <form onSubmit={(e) => {
               e.preventDefault();
               if (!editName || !editCode) return;
-              if (editCost > editPrice) {
+              const cost = parseFloat(editCost) || 0;
+              const price = parseFloat(editPrice) || 0;
+              if (cost > price) {
                 alert('عذراً! لا يمكن الحفظ لأن سعر الشراء (رأس المال) أعلى من سعر البيع (المبيع)، مما يعني حدوث خسارة على هذا الصنف. يرجى تعديل الأسعار أولاً لتجنب تسجيل خسائر.');
                 return;
               }
@@ -838,8 +840,8 @@ export default function Dashboard({
                 name: editName,
                 code: editCode,
                 stock: editStock,
-                unitCost: editCost,
-                salePrice: editPrice,
+                unitCost: cost,
+                salePrice: price,
                 unit: editUnit,
                 currency: editCurrency
               });
@@ -912,7 +914,7 @@ export default function Dashboard({
                     step="0.01"
                     required
                     value={editCost}
-                    onChange={(e) => setEditCost(parseFloat(e.target.value) || 0)}
+                    onChange={(e) => setEditCost(e.target.value)}
                     className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-center focus:outline-none focus:border-teal-600 focus:bg-white transition-all font-bold"
                   />
                 </div>
@@ -924,7 +926,7 @@ export default function Dashboard({
                     step="0.01"
                     required
                     value={editPrice}
-                    onChange={(e) => setEditPrice(parseFloat(e.target.value) || 0)}
+                    onChange={(e) => setEditPrice(e.target.value)}
                     className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-center focus:outline-none focus:border-teal-600 focus:bg-white transition-all font-bold"
                   />
                 </div>

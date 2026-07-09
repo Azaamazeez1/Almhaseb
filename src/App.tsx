@@ -299,8 +299,8 @@ export default function App() {
   // --- Quick Add Form Inputs ---
   const [newItemName, setNewItemName] = useState('');
   const [newItemCode, setNewItemCode] = useState('');
-  const [newItemCost, setNewItemCost] = useState(0);
-  const [newItemPrice, setNewItemPrice] = useState(0);
+  const [newItemCost, setNewItemCost] = useState<string>('');
+  const [newItemPrice, setNewItemPrice] = useState<string>('');
   const [newItemUnit, setNewItemUnit] = useState('حبة');
 
   const [newPartyName, setNewPartyName] = useState('');
@@ -497,7 +497,10 @@ export default function App() {
       return;
     }
 
-    if (newItemCost > newItemPrice) {
+    const cost = parseFloat(newItemCost) || 0;
+    const price = parseFloat(newItemPrice) || 0;
+
+    if (cost > price) {
       alert('عذراً! لا يمكن الحفظ لأن سعر الشراء (رأس المال) أعلى من سعر البيع المقترح (المبيع)، مما يعني حدوث خسارة على هذا الصنف. يرجى تعديل الأسعار أولاً لتجنب تسجيل خسائر.');
       return;
     }
@@ -507,17 +510,17 @@ export default function App() {
       name: newItemName,
       stock: 0, // Starts at 0, purchase invoices or stock audits will increase it
       unit: newItemUnit,
-      unitCost: newItemCost,
-      salePrice: newItemPrice,
+      unitCost: cost,
+      salePrice: price,
       currency: config.currency,
-      lastPurchasePrice: newItemCost
+      lastPurchasePrice: cost
     });
 
     // Reset fields
     setNewItemName('');
     setNewItemCode('');
-    setNewItemCost(0);
-    setNewItemPrice(0);
+    setNewItemCost('');
+    setNewItemPrice('');
     setNewItemUnit('حبة');
     setActiveModal(null);
     alert('تمت إضافة الصنف بنجاح! يمكنك الآن توريده عن طريق فاتورة المشتريات لتسجيل الكميات.');
@@ -633,8 +636,8 @@ export default function App() {
                 ? (Math.max(...items.map(it => parseInt(it.code) || 0)) + 1).toString()
                 : '101';
               setNewItemCode(nextCode);
-              setNewItemCost(0);
-              setNewItemPrice(0);
+              setNewItemCost('');
+              setNewItemPrice('');
               setNewItemUnit('حبة');
               setActiveModal('item');
             }}
@@ -907,8 +910,8 @@ export default function App() {
                     min="0"
                     step="0.01"
                     required
-                    value={newItemCost || ''}
-                    onChange={(e) => setNewItemCost(parseFloat(e.target.value) || 0)}
+                    value={newItemCost}
+                    onChange={(e) => setNewItemCost(e.target.value)}
                     className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-center focus:outline-none focus:border-emerald-600 focus:bg-white transition-all font-bold"
                   />
                 </div>
@@ -921,8 +924,8 @@ export default function App() {
                     min="0"
                     step="0.01"
                     required
-                    value={newItemPrice || ''}
-                    onChange={(e) => setNewItemPrice(parseFloat(e.target.value) || 0)}
+                    value={newItemPrice}
+                    onChange={(e) => setNewItemPrice(e.target.value)}
                     className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-center focus:outline-none focus:border-emerald-600 focus:bg-white transition-all font-bold"
                   />
                 </div>
