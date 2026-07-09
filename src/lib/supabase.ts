@@ -3,9 +3,9 @@ import { Item, Customer, Supplier, Transaction, UserAccount } from '../types';
 
 // Read Supabase environment variables statically so Vite can replace them at build-time
 // @ts-ignore
-let supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+let supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://mqtgpwnzudfsmsntgzfx.supabase.co';
 // @ts-ignore
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_qAfb-0kfXcix6tYgWAuNmg_318HAiys';
 
 // Auto-parse the project ref if URL is not supplied but the new publishable key format is used
 if (!supabaseUrl && supabaseAnonKey && supabaseAnonKey.startsWith('sb_publishable_')) {
