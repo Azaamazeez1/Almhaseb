@@ -611,7 +611,7 @@ export default function Dashboard({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-gray-600">
-              {filteredItems.map((item) => (
+              {filteredItems.slice(0, 5).map((item) => (
                 <tr
                   key={item.id}
                   onClick={() => startEditingItem(item)}
@@ -650,6 +650,18 @@ export default function Dashboard({
             </tbody>
           </table>
         </div>
+
+        {filteredItems.length > 5 && (
+          <div className="p-3 bg-teal-50/40 border-t border-slate-100 flex items-center justify-center">
+            <button
+              onClick={() => setActiveTab('inventory')}
+              className="px-4 py-2 bg-white hover:bg-teal-50 border border-teal-200 text-teal-700 text-xs font-black rounded-xl shadow-sm transition-all flex items-center gap-1.5 cursor-pointer"
+            >
+              <span>عرض باقي الأصناف (يوجد {filteredItems.length - 5} صنفاً إضافياً)...</span>
+              <ChevronLeft className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        )}
 
         {/* 3 Search Filter Fields below the Inventory table */}
         <div className="p-4 bg-slate-50/50 border-t border-slate-100 grid grid-cols-1 md:grid-cols-3 gap-4">
