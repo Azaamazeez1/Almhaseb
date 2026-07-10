@@ -90,6 +90,36 @@ export async function dbGetUserAccount(email: string): Promise<UserAccount | nul
 }
 
 /**
+ * Fetches all registered user accounts from Supabase (Admin function)
+ */
+export async function dbGetAllUserAccounts(): Promise<UserAccount[]> {
+  if (!supabase) return [];
+
+  try {
+    const { data, error } = await supabase
+      .from('user_accounts')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error || !data) {
+      console.error('Error fetching all user accounts:', error);
+      return [];
+    }
+
+    return data.map((row: any) => ({
+      email: row.email,
+      fullName: row.full_name,
+      companyName: row.company_name,
+      countryRegion: row.country_region,
+      phone: row.phone || ''
+    }));
+  } catch (err) {
+    console.error('Failed to run dbGetAllUserAccounts:', err);
+    return [];
+  }
+}
+
+/**
  * Pushes entire local state up to Supabase for a specific user
  */
 export async function dbSyncUpAllData(

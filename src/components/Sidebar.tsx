@@ -21,7 +21,8 @@ import {
   MapPin,
   Building2,
   Smartphone,
-  Cloud
+  Cloud,
+  ShieldCheck
 } from 'lucide-react';
 import { UserAccount } from '../types';
 
@@ -57,6 +58,10 @@ export default function Sidebar({
     { id: 'balance_sheet', label: 'الميزانية العمومية والمركز المالي', icon: Briefcase },
     { id: 'pwa_install', label: 'تثبيت التطبيق (APK)', icon: Smartphone },
   ];
+
+  if (currentUser?.fullName?.trim() === 'admn fade') {
+    menuItems.push({ id: 'admin_panel', label: 'أداة المسؤول (المسجلين)', icon: ShieldCheck });
+  }
 
   const quickActions = [
     { label: 'إضافة صنف جديد', icon: FolderPlus, action: () => onOpenAddModal('item') },

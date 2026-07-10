@@ -39,6 +39,7 @@ import PartiesView from './components/PartiesView';
 import VoucherForm from './components/VoucherForm';
 import ReportsView from './components/ReportsView';
 import PWAInstallView from './components/PWAInstallView';
+import AdminPanelView from './components/AdminPanelView';
 import { CustomSelect, UNIT_OPTIONS } from './components/CustomSelect';
 
 export default function App() {
@@ -949,6 +950,9 @@ export default function App() {
             onInstallSuccess={() => setDeferredPrompt(null)}
           />
         );
+
+      case 'admin_panel':
+        return <AdminPanelView />;
 
       default:
         return <div className="text-center py-12 text-gray-400">تحت التطوير...</div>;
