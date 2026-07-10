@@ -56,9 +56,55 @@ export default function PWAInstallView({ appUrl, onBack, deferredPrompt: propDef
     };
   }, []);
 
+  const isInIframe = window.self !== window.top;
+
+  useEffect(() => {
+    // If we have activeDeferredPrompt and trigger_pwa_install_on_load is set, trigger immediately
+    if (activeDeferredPrompt && localStorage.getItem('trigger_pwa_install_on_load') === 'true') {
+      localStorage.removeItem('trigger_pwa_install_on_load');
+      try {
+        activeDeferredPrompt.prompt();
+        activeDeferredPrompt.userChoice.then(({ outcome }: any) => {
+          if (outcome === 'accepted') {
+            setIsInstalled(true);
+            if (onInstallSuccess) onInstallSuccess();
+          }
+        }).catch((err: any) => console.error('Auto install prompt failed:', err));
+      } catch (err) {
+        console.error('Auto install trigger failed:', err);
+      }
+    }
+  }, [activeDeferredPrompt]);
+
   const handleInstallClick = async () => {
+    if (isInIframe) {
+      // Save flag to auto-trigger when loaded out of iframe
+      localStorage.setItem('trigger_pwa_install_on_load', 'true');
+      
+      // Attempt to open the app standalone URL in a new tab
+      const currentUrl = window.location.href;
+      const newTab = window.open(currentUrl, '_blank');
+      
+      if (!newTab) {
+        // If popup blocker is active, redirect top window
+        try {
+          window.top!.location.href = currentUrl;
+        } catch (err) {
+          window.location.href = currentUrl;
+        }
+      }
+      return;
+    }
+
     if (!activeDeferredPrompt) {
-      alert('لتثبيت تطبيق "بيبرس للمحاسبة" على هاتفك مباشرة:\n\n1. إذا كنت تستخدم أندرويد: انقر على زر الخيارات (⋮) في أعلى المتصفح ثم اختر "تثبيت التطبيق" أو "إضافة للشاشة الرئيسية".\n2. إذا كنت تستخدم آيفون: انقر على زر مشاركة (Share) في أسفل متصفح سفاري ثم اختر "إضافة للشاشة الرئيسية" (Add to Home Screen).');
+      // Check if iOS
+      const isiOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+      
+      if (isiOS) {
+        alert('لتثبيت تطبيق "بيبرس للمحاسبة" على هاتف الآيفون:\n\n١. انقر على زر مشاركة (Share) في أسفل متصفح سفاري.\n٢. اختر "إضافة للشاشة الرئيسية" (Add to Home Screen).');
+      } else {
+        alert('التثبيت الفوري التلقائي مدعوم في متصفح Chrome/Edge/Samsung على هواتف أندرويد والكمبيوتر.\n\nلتثبيته يدوياً:\n١. اضغط على خيارات المتصفح في الأعلى (⋮).\n٢. اختر "تثبيت التطبيق" أو "إضافة للشاشة الرئيسية".');
+      }
       return;
     }
     

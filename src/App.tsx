@@ -324,6 +324,23 @@ export default function App() {
     };
   }, []);
 
+  // Auto-trigger PWA installation if redirected out of iframe
+  useEffect(() => {
+    if (deferredPrompt && localStorage.getItem('trigger_pwa_install_on_load') === 'true') {
+      localStorage.removeItem('trigger_pwa_install_on_load');
+      try {
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.then(({ outcome }: any) => {
+          if (outcome === 'accepted') {
+            setDeferredPrompt(null);
+          }
+        }).catch((err: any) => console.error('Auto install choice failed:', err));
+      } catch (err) {
+        console.error('Auto install prompt execution failed:', err);
+      }
+    }
+  }, [deferredPrompt]);
+
   // --- Modals State ---
   const [activeModal, setActiveModal] = useState<'item' | 'customer' | 'supplier' | 'voucher_in' | 'voucher_out' | 'sale_return' | 'purchase_return' | 'about' | 'settings' | null>(null);
 
@@ -813,6 +830,22 @@ export default function App() {
               <button
                 onClick={async () => {
                   setShowInstallPrompt(false);
+                  const isInIframe = window.self !== window.top;
+                  
+                  if (isInIframe) {
+                    localStorage.setItem('trigger_pwa_install_on_load', 'true');
+                    const currentUrl = window.location.href;
+                    const newTab = window.open(currentUrl, '_blank');
+                    if (!newTab) {
+                      try {
+                        window.top!.location.href = currentUrl;
+                      } catch (err) {
+                        window.location.href = currentUrl;
+                      }
+                    }
+                    return;
+                  }
+
                   if (deferredPrompt) {
                     try {
                       deferredPrompt.prompt();
