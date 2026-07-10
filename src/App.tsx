@@ -308,19 +308,36 @@ export default function App() {
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
 
+    // Listen for successful installation event
+    const handleAppInstalled = () => {
+      localStorage.setItem('pwa_installed', 'true');
+    };
+    window.addEventListener('appinstalled', handleAppInstalled);
+
+    // Check if already installed
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
+                         (window.navigator as any).standalone || 
+                         localStorage.getItem('pwa_installed') === 'true';
+
     const isDismissed = localStorage.getItem('pwa_prompt_dismissed');
-    if (!isDismissed) {
-      const timer = setTimeout(() => {
-        setShowInstallPrompt(true);
+
+    let timer: any;
+    if (!isStandalone && !isDismissed) {
+      // 5 seconds = 5000 milliseconds
+      timer = setTimeout(() => {
+        const currentlyStandalone = window.matchMedia('(display-mode: standalone)').matches || 
+                                    (window.navigator as any).standalone || 
+                                    localStorage.getItem('pwa_installed') === 'true';
+        if (!currentlyStandalone) {
+          setShowInstallPrompt(true);
+        }
       }, 5000);
-      return () => {
-        window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-        clearTimeout(timer);
-      };
     }
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('appinstalled', handleAppInstalled);
+      if (timer) clearTimeout(timer);
     };
   }, []);
 
