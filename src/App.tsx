@@ -358,6 +358,46 @@ export default function App() {
     }
   }, [deferredPrompt]);
 
+  // --- Profile Completion & First Sale Setup State ---
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [pendingSaleInvoice, setPendingSaleInvoice] = useState<{
+    newTx: Transaction;
+    stockChanges: { itemId: string; newStock: number }[];
+    partyBalanceChange?: { partyType: 'customer' | 'supplier'; partyId: string; amountChange: number };
+  } | null>(null);
+
+  const [profileFullName, setProfileFullName] = useState('');
+  const [profilePhone, setProfilePhone] = useState('');
+  const [profileCompanyName, setProfileCompanyName] = useState('');
+
+  const isProfileIncomplete = (user: UserAccount | null) => {
+    if (!user) return true;
+    const fName = user.fullName || '';
+    const cName = user.companyName || '';
+    const phone = user.phone || '';
+    
+    return (
+      !fName.trim() || 
+      fName.includes('نسخة سحابية') || 
+      !cName.trim() || 
+      cName.includes('جهاز محاسبي') || 
+      !phone.trim() || 
+      phone.trim().length < 5
+    );
+  };
+
+  useEffect(() => {
+    if (isProfileModalOpen && currentUser) {
+      const fName = currentUser.fullName || '';
+      const cName = currentUser.companyName || '';
+      const phone = currentUser.phone || '';
+
+      setProfileFullName(fName.includes('نسخة سحابية') ? '' : fName);
+      setProfileCompanyName(cName.includes('جهاز محاسبي') ? '' : cName);
+      setProfilePhone(phone);
+    }
+  }, [isProfileModalOpen, currentUser]);
+
   // --- Modals State ---
   const [activeModal, setActiveModal] = useState<'item' | 'customer' | 'supplier' | 'voucher_in' | 'voucher_out' | 'sale_return' | 'purchase_return' | 'about' | 'settings' | null>(null);
 
@@ -457,6 +497,12 @@ export default function App() {
     stockChanges: { itemId: string; newStock: number }[],
     partyBalanceChange?: { partyType: 'customer' | 'supplier'; partyId: string; amountChange: number }
   ) => {
+    if (newTx.type === 'sale' && isProfileIncomplete(currentUser)) {
+      setPendingSaleInvoice({ newTx, stockChanges, partyBalanceChange });
+      setIsProfileModalOpen(true);
+      return;
+    }
+
     const updatedTxs = [newTx, ...transactions];
     setTransactions(updatedTxs);
 
@@ -496,6 +542,113 @@ export default function App() {
     }
 
     persistState(updatedItems, updatedCustomers, updatedSuppliers, updatedTxs, config);
+  };
+
+  const handleProfileSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    const fullNameVal = profileFullName.trim();
+    const phoneVal = profilePhone.trim();
+    const companyNameVal = profileCompanyName.trim();
+
+    if (!fullNameVal || !phoneVal || !companyNameVal) {
+      window.alert('يرجى تعبئة جميع الحقول المطلوبة.');
+      return;
+    }
+
+    // Validate triple name: must have at least 3 parts (space separated)
+    const parts = fullNameVal.split(/\s+/).filter(p => p.length > 0);
+    if (parts.length < 3) {
+      window.alert('يرجى إدخال اسمك الثلاثي الكامل (٣ أسماء على الأقل، مثال: محمد صالح العلي).');
+      return;
+    }
+
+    // Phone number validation: must have at least 7 digits
+    if (phoneVal.length < 7) {
+      window.alert('يرجى إدخال رقم هاتف صالح ومكتمل (٧ أرقام على الأقل).');
+      return;
+    }
+
+    if (!currentUser) {
+      window.alert('عذراً، لم يتم العثور على الحساب النشط.');
+      return;
+    }
+
+    const updatedUser: UserAccount = {
+      ...currentUser,
+      fullName: fullNameVal,
+      companyName: companyNameVal,
+      phone: phoneVal
+    };
+
+    localStorage.setItem('current_user', JSON.stringify(updatedUser));
+    setCurrentUser(updatedUser);
+
+    // Save/sync with Supabase
+    try {
+      const { dbSaveUserAccount, isSupabaseConfigured } = await import('./lib/supabase');
+      if (isSupabaseConfigured()) {
+        await dbSaveUserAccount(updatedUser);
+      }
+    } catch (err) {
+      console.error('Error saving updated profile to Supabase:', err);
+    }
+
+    setIsProfileModalOpen(false);
+
+    // If there is a pending sale invoice, complete saving it now
+    if (pendingSaleInvoice) {
+      const { newTx, stockChanges, partyBalanceChange } = pendingSaleInvoice;
+      
+      const updatedTxs = [newTx, ...transactions];
+      setTransactions(updatedTxs);
+
+      let updatedItems = [...items];
+      if (stockChanges && stockChanges.length > 0) {
+        const stockMap = new Map(stockChanges.map((sc) => [sc.itemId, sc.newStock]));
+        updatedItems = items.map((it) => {
+          if (stockMap.has(it.id)) {
+            return { ...it, stock: stockMap.get(it.id)! };
+          }
+          return it;
+        });
+        setItems(updatedItems);
+      }
+
+      let updatedCustomers = [...customers];
+      let updatedSuppliers = [...suppliers];
+      if (partyBalanceChange) {
+        const { partyType, partyId, amountChange } = partyBalanceChange;
+        if (partyType === 'customer') {
+          updatedCustomers = customers.map((c) => {
+            if (c.id === partyId) {
+              return { ...c, balance: c.balance + amountChange };
+            }
+            return c;
+          });
+          setCustomers(updatedCustomers);
+        } else {
+          updatedSuppliers = suppliers.map((s) => {
+            if (s.id === partyId) {
+              return { ...s, balance: s.balance + amountChange };
+            }
+            return s;
+          });
+          setSuppliers(updatedSuppliers);
+        }
+      }
+
+      persistState(updatedItems, updatedCustomers, updatedSuppliers, updatedTxs, config);
+      setPendingSaleInvoice(null);
+      window.alert('تم حفظ الملف الشخصي لشركتكم بنجاح، وتم ترحيل وحفظ فاتورة المبيعات بنجاح!');
+    } else {
+      window.alert('تم حفظ وتحديث بيانات حسابكم التجاري بنجاح.');
+    }
+  };
+
+  const handleCancelProfileModal = () => {
+    setIsProfileModalOpen(false);
+    setPendingSaleInvoice(null);
   };
 
   const handleUpdateStock = (itemId: string, newStock: number) => {
@@ -1580,6 +1733,79 @@ export default function App() {
           }
         }}
       />
+
+      {/* Profile Completion Modal */}
+      {isProfileModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-200" dir="rtl">
+          <div className="bg-white rounded-[24px] max-w-md w-full p-6 shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-250 flex flex-col">
+            {/* Header */}
+            <div className="flex items-center gap-3 border-b border-slate-100 pb-4 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                <Briefcase className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-sm text-slate-800">إكمال بيانات النشاط التجاري</h3>
+                <p className="text-[11px] text-gray-500 mt-0.5">مطلوب لتسجيل وحفظ فواتير المبيعات الخاصة بك في قاعدة البيانات</p>
+              </div>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleProfileSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">الاسم الثلاثي الكامل <span className="text-rose-500">*</span></label>
+                <input
+                  type="text"
+                  required
+                  placeholder="مثال: علي محمد حسن"
+                  value={profileFullName}
+                  onChange={(e) => setProfileFullName(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-emerald-600 focus:bg-white transition-all font-bold"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">رقم هاتف الجوال <span className="text-rose-500">*</span></label>
+                <input
+                  type="tel"
+                  required
+                  placeholder="مثال: 777111222"
+                  value={profilePhone}
+                  onChange={(e) => setProfilePhone(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-left font-bold focus:outline-none focus:border-emerald-600 focus:bg-white transition-all"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">اسم الشركة / المحل التجاري <span className="text-rose-500">*</span></label>
+                <input
+                  type="text"
+                  required
+                  placeholder="مثال: سوبرماركت الهناء"
+                  value={profileCompanyName}
+                  onChange={(e) => setProfileCompanyName(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-emerald-600 focus:bg-white transition-all font-bold"
+                />
+              </div>
+
+              <div className="flex gap-3 pt-4 border-t border-slate-100">
+                <button
+                  type="submit"
+                  className="flex-1 py-2.5 px-4 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-100 transition-all cursor-pointer select-none active:scale-98"
+                >
+                  حفظ وتأكيد الفاتورة
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCancelProfileModal}
+                  className="py-2.5 px-4 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-600 transition-all cursor-pointer select-none active:scale-98"
+                >
+                  إلغاء الفاتورة
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
