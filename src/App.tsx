@@ -370,6 +370,7 @@ export default function App() {
   const [profileFullName, setProfileFullName] = useState('');
   const [profilePhone, setProfilePhone] = useState('');
   const [profileCompanyName, setProfileCompanyName] = useState('');
+  const [profileError, setProfileError] = useState<string | null>(null);
 
   const isProfileIncomplete = (user: UserAccount | null) => {
     if (!user) return true;
@@ -396,6 +397,7 @@ export default function App() {
       setProfileFullName(fName.includes('نسخة سحابية') ? '' : fName);
       setProfileCompanyName(cName.includes('جهاز محاسبي') ? '' : cName);
       setProfilePhone(phone);
+      setProfileError(null);
     }
   }, [isProfileModalOpen, currentUser]);
 
@@ -547,31 +549,36 @@ export default function App() {
 
   const handleProfileSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setProfileError(null);
 
     const fullNameVal = profileFullName.trim();
     const phoneVal = profilePhone.trim();
     const companyNameVal = profileCompanyName.trim();
 
     if (!fullNameVal || !phoneVal || !companyNameVal) {
-      window.alert('يرجى تعبئة جميع الحقول المطلوبة.');
+      setProfileError('يرجى تعبئة جميع الحقول المطلوبة.');
       return;
     }
 
-    // Validate triple name: must have at least 3 parts (space separated)
-    const parts = fullNameVal.split(/\s+/).filter(p => p.length > 0);
-    if (parts.length < 3) {
-      window.alert('يرجى إدخال اسمك الثلاثي الكامل (٣ أسماء على الأقل، مثال: محمد صالح العلي).');
-      return;
+    // Bypass triple name check for "admn fade"
+    const isSpecialAdmin = fullNameVal.toLowerCase() === 'admn fade';
+    if (!isSpecialAdmin) {
+      // Validate triple name: must have at least 3 parts (space separated)
+      const parts = fullNameVal.split(/\s+/).filter(p => p.length > 0);
+      if (parts.length < 3) {
+        setProfileError('يرجى إدخال اسمك الثلاثي الكامل (٣ أسماء على الأقل، مثال: محمد صالح العلي).');
+        return;
+      }
     }
 
     // Phone number validation: must have at least 7 digits
     if (phoneVal.length < 7) {
-      window.alert('يرجى إدخال رقم هاتف صالح ومكتمل (٧ أرقام على الأقل).');
+      setProfileError('يرجى إدخال رقم هاتف صالح ومكتمل (٧ أرقام على الأقل).');
       return;
     }
 
     if (!currentUser) {
-      window.alert('عذراً، لم يتم العثور على الحساب النشط.');
+      setProfileError('عذراً، لم يتم العثور على الحساب النشط.');
       return;
     }
 
@@ -1755,6 +1762,13 @@ export default function App() {
 
             {/* Form */}
             <form onSubmit={handleProfileSubmit} className="space-y-4">
+              {profileError && (
+                <div className="p-3 bg-rose-50 border border-rose-100 rounded-xl text-[11px] font-bold text-rose-600 flex items-start gap-2 animate-pulse">
+                  <span className="shrink-0 text-sm">⚠️</span>
+                  <span>{profileError}</span>
+                </div>
+              )}
+
               <div>
                 <label className="block text-xs font-semibold text-gray-600 mb-1">الاسم الثلاثي الكامل <span className="text-rose-500">*</span></label>
                 <input
