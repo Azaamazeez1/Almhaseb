@@ -28,7 +28,7 @@ import {
   MessageCircle
 } from 'lucide-react';
 import { Item, Customer, Supplier, Transaction, TransactionType } from '../types';
-import { formatCurrency } from '../utils';
+import { formatCurrency, getCurrencySymbol } from '../utils';
 import { CustomSelect, UNIT_OPTIONS } from './CustomSelect';
 
 interface InvoiceViewProps {
@@ -1322,7 +1322,7 @@ https://almhaseb.vercel.app/`;
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[10px] font-black text-slate-500 mb-1">تكلفة الشراء الأساسية (ريال)</label>
+                    <label className="block text-[10px] font-black text-slate-500 mb-1">تكلفة الشراء الأساسية ({getCurrencySymbol()})</label>
                     <input
                       type="number"
                       step="0.01"
@@ -1334,7 +1334,7 @@ https://almhaseb.vercel.app/`;
                   </div>
 
                   <div>
-                    <label className="block text-[10px] font-black text-slate-500 mb-1">سعر البيع المقترح (ريال)</label>
+                    <label className="block text-[10px] font-black text-slate-500 mb-1">سعر البيع المقترح ({getCurrencySymbol()})</label>
                     <input
                       type="number"
                       step="0.01"
@@ -1679,7 +1679,7 @@ https://almhaseb.vercel.app/`;
                     />
                   </div>
                   <div className="relative">
-                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 font-bold">ريال</span>
+                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 font-bold">{getCurrencySymbol()}</span>
                     <input
                       type="number"
                       step="any"
@@ -1743,7 +1743,7 @@ https://almhaseb.vercel.app/`;
                     />
                   </div>
                   <div className="relative">
-                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 font-bold">ريال</span>
+                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 font-bold">{getCurrencySymbol()}</span>
                     <input
                       type="number"
                       step="any"

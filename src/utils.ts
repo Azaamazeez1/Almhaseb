@@ -377,3 +377,22 @@ export function formatCurrency(amount: number, currency?: string): string {
     return `${formattedAmount} ريال`;
   }
 }
+
+export function getCurrencySymbol(currency?: string): string {
+  let activeCurrency = 'USD';
+  try {
+    const configData = localStorage.getItem('acct_inv_config');
+    if (configData) {
+      const parsed = JSON.parse(configData);
+      if (parsed && parsed.currency) {
+        activeCurrency = parsed.currency;
+      }
+    }
+  } catch (e) {
+    // fallback
+  }
+  const finalCurrency = currency || activeCurrency;
+  if (finalCurrency === 'USD') return '$';
+  if (finalCurrency === 'SAR') return 'ر.س';
+  return 'ريال';
+}

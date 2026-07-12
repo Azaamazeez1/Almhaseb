@@ -9,7 +9,7 @@ import {
   CheckCircle2
 } from 'lucide-react';
 import { Customer, Supplier, Transaction, TransactionType } from '../types';
-import { formatCurrency } from '../utils';
+import { formatCurrency, getCurrencySymbol } from '../utils';
 
 interface VoucherFormProps {
   type: 'receipt_voucher' | 'payment_voucher';
@@ -125,12 +125,12 @@ export default function VoucherForm({
                 {isReceipt
                   ? customers.map((c) => (
                       <option key={c.id} value={c.id}>
-                        العميل: {c.name} (رصيده المتبقي: {c.balance} ريال)
+                        العميل: {c.name} (رصيده المتبقي: {formatCurrency(c.balance)})
                       </option>
                     ))
                   : suppliers.map((s) => (
                       <option key={s.id} value={s.id}>
-                        المورد: {s.name} (ديننا له: {s.balance} ريال)
+                        المورد: {s.name} (ديننا له: {formatCurrency(s.balance)})
                       </option>
                     ))}
               </select>
@@ -159,7 +159,7 @@ export default function VoucherForm({
                 <span>المبلغ النقدي المسدد</span>
               </label>
               <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400">ريال يمني</span>
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400">{getCurrencySymbol()}</span>
                 <input
                   id="voucher-amount-input"
                   type="number"

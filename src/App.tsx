@@ -26,7 +26,7 @@ import {
   Download
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { getInitialState, saveAllStates, formatCurrency } from './utils';
+import { getInitialState, saveAllStates, formatCurrency, getCurrencySymbol } from './utils';
 import { Item, Customer, Supplier, Transaction, AppConfig, UserAccount } from './types';
 
 // Importing modular components
@@ -1223,7 +1223,7 @@ export default function App() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-gray-500 mb-1">تكلفة الشراء الأساسية (ريال)</label>
+                  <label className="block text-xs font-semibold text-gray-500 mb-1">تكلفة الشراء الأساسية ({getCurrencySymbol(config.currency)})</label>
                   <input
                     id="modal-item-cost-input"
                     type="number"
@@ -1237,7 +1237,7 @@ export default function App() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-gray-500 mb-1">سعر البيع المقترح (ريال)</label>
+                  <label className="block text-xs font-semibold text-gray-500 mb-1">سعر البيع المقترح ({getCurrencySymbol(config.currency)})</label>
                   <input
                     id="modal-item-price-input"
                     type="number"
@@ -1457,7 +1457,7 @@ export default function App() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-gray-500 mb-1">القيمة الفردية للصنف (ريال)</label>
+                  <label className="block text-xs font-semibold text-gray-500 mb-1">القيمة الفردية للصنف ({getCurrencySymbol(config.currency)})</label>
                   <input
                     name="price"
                     type="number"
