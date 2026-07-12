@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ChevronDown, Check } from 'lucide-react';
 
-export const UNIT_OPTIONS = ['حبة', 'كرتون', 'كيس', 'سطل', 'برميل', 'كيلو', 'متر', 'لتر'];
+export const UNIT_OPTIONS = ['حبة', 'كرتون', 'كيس', 'سطل', 'برميل', 'جالون', 'كيلو', 'متر', 'لتر'];
 
 interface CustomSelectProps {
   value: string;
