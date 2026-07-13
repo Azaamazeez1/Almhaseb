@@ -717,73 +717,11 @@ https://almhaseb.vercel.app/`;
   };
 
   const handleDownloadPdf = async () => {
-    if (!activeShareInvoice) return;
-    setIsGeneratingPdf(true);
-    await new Promise((resolve) => setTimeout(resolve, 150));
-
-    try {
-      const blob = await generatePdfBlob();
-      if (!blob) {
-        alert('فشل توليد ملف الـ PDF!');
-        return;
-      }
-
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      const fileName = `invoice_${activeShareInvoice.invoiceNumber || activeShareInvoice.id?.slice(-6) || 'receipt'}.pdf`;
-      a.download = fileName;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    } catch (err) {
-      console.error(err);
-      alert('حدث خطأ غير متوقع أثناء تحميل ملف الـ PDF!');
-    } finally {
-      setIsGeneratingPdf(false);
-    }
+    alert('هذه الميزة (تصدير PDF) قيد التطوير حالياً. يمكنك استخدام ميزة "مشاركة الفاتورة كنص مكتوب" بالأسفل لمشاركة تفاصيل الفاتورة بسرعة وسهولة. شكراً لتفهمك!');
   };
 
   const handleSharePdf = async () => {
-    if (!activeShareInvoice) return;
-    setIsGeneratingPdf(true);
-    await new Promise((resolve) => setTimeout(resolve, 150));
-
-    try {
-      const blob = await generatePdfBlob();
-      if (!blob) {
-        alert('فشل توليد ملف الـ PDF!');
-        return;
-      }
-
-      const fileName = `invoice_${activeShareInvoice.invoiceNumber || activeShareInvoice.id?.slice(-6) || 'receipt'}.pdf`;
-      const file = new File([blob], fileName, { type: 'application/pdf' });
-
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({
-          files: [file],
-          title: activeShareInvoice.type === 'sale' ? 'فاتورة مبيعات' : 'فاتورة مشتريات',
-          text: `مرفق لكم الفاتورة الاحترافية رقم ${activeShareInvoice.invoiceNumber || 'مسودة'}`
-        });
-      } else {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = fileName;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        
-        alert('هذا المتصفح أو البيئة الحالية لا تدعم مشاركة الملفات مباشرة عبر نظام التشغيل. تم تنزيل ملف الـ PDF على جهازك بنجاح، يمكنك الآن إرساله يدوياً كملف إلى العميل عبر واتساب!');
-      }
-    } catch (err) {
-      console.error(err);
-      alert('حدث خطأ غير متوقع أثناء مشاركة ملف الـ PDF!');
-    } finally {
-      setIsGeneratingPdf(false);
-    }
+    alert('هذه الميزة (مشاركة PDF) قيد التطوير حالياً. يمكنك استخدام ميزة "مشاركة الفاتورة كنص مكتوب" بالأسفل لمشاركة تفاصيل الفاتورة بسرعة وسهولة. شكراً لتفهمك!');
   };
 
   // Get current active balance of selected party
