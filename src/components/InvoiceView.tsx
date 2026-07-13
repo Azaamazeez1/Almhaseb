@@ -30,6 +30,8 @@ import {
 import { Item, Customer, Supplier, Transaction, TransactionType } from '../types';
 import { formatCurrency, getCurrencySymbol } from '../utils';
 import { CustomSelect, UNIT_OPTIONS } from './CustomSelect';
+import { jsPDF } from 'jspdf';
+import html2canvas from 'html2canvas';
 
 interface InvoiceViewProps {
   items: Item[];
@@ -119,6 +121,7 @@ export default function InvoiceView({
   const [activeShareInvoice, setActiveShareInvoice] = useState<any | null>(null);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [dontShowSharePrompt, setDontShowSharePrompt] = useState(() => localStorage.getItem('dontShowSharePrompt') === 'true');
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
   // Daily Filter state - defaults to current day
   const [selectedDateFilter, setSelectedDateFilter] = useState(() => {
@@ -599,6 +602,123 @@ https://almhaseb.vercel.app/`;
     };
     setActiveShareInvoice(draftTx);
     setIsShareModalOpen(true);
+  };
+
+  const generatePdfBlob = async (): Promise<Blob | null> => {
+    const element = document.getElementById('printable-invoice-pdf-container');
+    if (!element) {
+      alert('خطأ: لم يتم العثور على قالب الطباعة!');
+      return null;
+    }
+
+    try {
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        logging: false,
+        backgroundColor: '#ffffff'
+      });
+
+      const imgData = canvas.toDataURL('image/png');
+
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
+
+      const imgWidth = 210;
+      const pageHeight = 295;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      let heightLeft = imgHeight;
+      let position = 0;
+
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight, '', 'FAST');
+      heightLeft -= pageHeight;
+
+      while (heightLeft >= 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight, '', 'FAST');
+        heightLeft -= pageHeight;
+      }
+
+      return pdf.output('blob');
+    } catch (err) {
+      console.error('Error in PDF generation:', err);
+      return null;
+    }
+  };
+
+  const handleDownloadPdf = async () => {
+    if (!activeShareInvoice) return;
+    setIsGeneratingPdf(true);
+    await new Promise((resolve) => setTimeout(resolve, 150));
+
+    try {
+      const blob = await generatePdfBlob();
+      if (!blob) {
+        alert('فشل توليد ملف الـ PDF!');
+        return;
+      }
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const fileName = `invoice_${activeShareInvoice.invoiceNumber || activeShareInvoice.id?.slice(-6) || 'receipt'}.pdf`;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error(err);
+      alert('حدث خطأ غير متوقع أثناء تحميل ملف الـ PDF!');
+    } finally {
+      setIsGeneratingPdf(false);
+    }
+  };
+
+  const handleSharePdf = async () => {
+    if (!activeShareInvoice) return;
+    setIsGeneratingPdf(true);
+    await new Promise((resolve) => setTimeout(resolve, 150));
+
+    try {
+      const blob = await generatePdfBlob();
+      if (!blob) {
+        alert('فشل توليد ملف الـ PDF!');
+        return;
+      }
+
+      const fileName = `invoice_${activeShareInvoice.invoiceNumber || activeShareInvoice.id?.slice(-6) || 'receipt'}.pdf`;
+      const file = new File([blob], fileName, { type: 'application/pdf' });
+
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: activeShareInvoice.type === 'sale' ? 'فاتورة مبيعات' : 'فاتورة مشتريات',
+          text: `مرفق لكم الفاتورة الاحترافية رقم ${activeShareInvoice.invoiceNumber || 'مسودة'}`
+        });
+      } else {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        alert('هذا المتصفح أو البيئة الحالية لا تدعم مشاركة الملفات مباشرة عبر نظام التشغيل. تم تنزيل ملف الـ PDF على جهازك بنجاح، يمكنك الآن إرساله يدوياً كملف إلى العميل عبر واتساب!');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('حدث خطأ غير متوقع أثناء مشاركة ملف الـ PDF!');
+    } finally {
+      setIsGeneratingPdf(false);
+    }
   };
 
   // Get current active balance of selected party
@@ -2075,80 +2195,131 @@ https://almhaseb.vercel.app/`;
       {/* ==================== MODAL 4: SHARE INVOICE MODAL ==================== */}
       {isShareModalOpen && activeShareInvoice && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-teal-50 animate-in zoom-in-95 duration-200 text-right" dir="rtl">
-            {/* Icon & Title */}
-            <div className="text-center pb-4 border-b border-slate-150 mb-5">
-              <div className="w-14 h-14 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-3 text-[#4b8c82]">
-                <Share2 className="h-7 w-7" />
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-teal-50 animate-in zoom-in-95 duration-200 text-right relative" dir="rtl">
+            
+            {/* Generating PDF Loader Overlay */}
+            {isGeneratingPdf && (
+              <div className="absolute inset-0 bg-white/95 backdrop-blur-sm rounded-3xl z-50 flex flex-col items-center justify-center gap-4">
+                <div className="w-12 h-12 rounded-full border-4 border-slate-200 border-t-[#4b8c82] animate-spin"></div>
+                <div className="text-center">
+                  <h4 className="text-sm font-black text-slate-800">جاري إنشاء ملف الـ PDF...</h4>
+                  <p className="text-[11px] text-slate-500 mt-1 font-bold">يرجى الانتظار لحين معالجة البيانات وتصدير الملف</p>
+                </div>
               </div>
-              <h3 className="text-base font-black text-slate-800">
-                بيبرس للمحاسبة:
+            )}
+
+            {/* Icon & Title */}
+            <div className="text-center pb-4 border-b border-slate-150 mb-4">
+              <div className="w-12 h-12 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-2 text-[#4b8c82]">
+                <Share2 className="h-6 w-6" />
+              </div>
+              <h3 className="text-sm font-black text-slate-800">
+                مشاركة الفاتورة وتصديرها:
               </h3>
-              <p className="text-xs text-slate-500 font-bold mt-1">
-                جاهز لمشاركة الفاتورة مع العميل عبر المنصات:
+              <p className="text-[11px] text-slate-500 font-bold mt-1">
+                اختر طريقة التصدير والمشاركة المناسبة لك:
               </p>
             </div>
 
-            {/* Share Options Panel */}
-            <div className="bg-slate-50/50 rounded-2xl p-4 border border-slate-200/50 flex flex-col items-center gap-4">
-              {/* Buttons Row */}
-              <div className="flex justify-center items-center gap-6 w-full">
-                {/* WhatsApp Button */}
-                <button
-                  onClick={() => {
-                    const text = generateShareText(activeShareInvoice);
-                    const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
-                    window.open(url, '_blank');
-                  }}
-                  className="flex flex-col items-center gap-1.5 cursor-pointer group flex-1"
-                  title="مشاركة عبر واتساب"
-                >
-                  <div className="w-12 h-12 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl flex items-center justify-center shadow-md transition-all transform group-hover:scale-105 active:scale-95 mx-auto">
-                    <MessageCircle className="h-6 w-6 fill-current" />
-                  </div>
-                  <span className="text-[10px] font-black text-slate-600">واتساب</span>
-                </button>
+            <div className="space-y-4">
+              {/* Option Block A: Professional PDF Export (Requested Feature) */}
+              <div className="bg-teal-50/40 rounded-2xl p-4 border border-teal-100/60 space-y-3">
+                <h4 className="text-[11px] font-black text-teal-800 flex items-center gap-1.5">
+                  <span className="w-2 h-2 bg-[#4b8c82] rounded-full inline-block"></span>
+                  مشاركة وتنزيل كملف PDF احترافي 📄
+                </h4>
+                
+                <div className="grid grid-cols-2 gap-3">
+                  {/* Share PDF Directly (triggers WhatsApp as PDF attachment!) */}
+                  <button
+                    onClick={handleSharePdf}
+                    className="py-3 px-4 bg-[#4b8c82] hover:bg-[#3d736b] text-white rounded-xl text-[11px] font-black shadow-md cursor-pointer transition-all transform hover:scale-[1.02] active:scale-95 flex flex-col items-center justify-center gap-1.5"
+                    title="إرسال الفاتورة كملف PDF"
+                  >
+                    <Share2 className="h-5 w-5" />
+                    <span>مشاركة ملف PDF 📤</span>
+                  </button>
 
-                {/* Email Button */}
-                <button
-                  onClick={() => {
-                    const text = generateShareText(activeShareInvoice);
-                    const subject = activeShareInvoice.type === 'sale' ? 'فاتورة مبيعات - بيبرس للمحاسبة' : 'فاتورة مشتريات - بيبرس للمحاسبة';
-                    const url = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text)}`;
-                    window.open(url, '_blank');
-                  }}
-                  className="flex flex-col items-center gap-1.5 cursor-pointer group flex-1"
-                  title="مشاركة عبر البريد"
-                >
-                  <div className="w-12 h-12 bg-amber-500 hover:bg-amber-600 text-white rounded-2xl flex items-center justify-center shadow-md transition-all transform group-hover:scale-105 active:scale-95 mx-auto">
-                    <Mail className="h-6 w-6" />
-                  </div>
-                  <span className="text-[10px] font-black text-slate-600">بريد إلكتروني</span>
-                </button>
+                  {/* Download PDF file locally */}
+                  <button
+                    onClick={handleDownloadPdf}
+                    className="py-3 px-4 bg-teal-50 hover:bg-teal-100 text-[#4b8c82] border border-[#4b8c82]/20 rounded-xl text-[11px] font-black cursor-pointer transition-all transform hover:scale-[1.02] active:scale-95 flex flex-col items-center justify-center gap-1.5"
+                    title="حفظ الفاتورة كملف PDF في جهازك"
+                  >
+                    <FileDown className="h-5 w-5" />
+                    <span>تحميل ملف PDF 📥</span>
+                  </button>
+                </div>
+                <p className="text-[9px] text-slate-400 font-bold text-center leading-normal">
+                  * مشاركة الـ PDF تسمح بإرسال فاتورة منسقة كملف مرفق على واتساب مباشرة (مثل التطبيقات المحاسبية الأخرى).
+                </p>
+              </div>
 
-                {/* Native / System Share Button */}
-                <button
-                  onClick={() => {
-                    const text = generateShareText(activeShareInvoice);
-                    if (navigator.share) {
-                      navigator.share({
-                        title: activeShareInvoice.type === 'sale' ? 'فاتورة مبيعات' : 'فاتورة مشتريات',
-                        text: text,
-                        url: 'https://almhaseb.vercel.app/'
-                      }).catch((err) => console.log('Error sharing:', err));
-                    } else {
-                      navigator.clipboard.writeText(text);
-                      alert('تم نسخ نص الفاتورة بالكامل! يمكنك الآن لصقه في أي تطبيق للدردشة.');
-                    }
-                  }}
-                  className="flex flex-col items-center gap-1.5 cursor-pointer group flex-1"
-                  title="مشاركة النظام"
-                >
-                  <div className="w-12 h-12 bg-teal-600 hover:bg-teal-700 text-white rounded-2xl flex items-center justify-center shadow-md transition-all transform group-hover:scale-105 active:scale-95 mx-auto">
-                    <Share2 className="h-6 w-6" />
-                  </div>
-                  <span className="text-[10px] font-black text-slate-600">مشاركة عامة</span>
-                </button>
+              {/* Option Block B: Quick Text sharing (Legacy) */}
+              <div className="bg-slate-50/50 rounded-2xl p-4 border border-slate-200/50 space-y-2.5">
+                <h4 className="text-[11px] font-black text-slate-700 flex items-center gap-1.5">
+                  <span className="w-2 h-2 bg-slate-400 rounded-full inline-block"></span>
+                  مشاركة الفاتورة كنص مكتوب 📝
+                </h4>
+
+                <div className="flex justify-center items-center gap-4 w-full pt-1">
+                  {/* WhatsApp Button */}
+                  <button
+                    onClick={() => {
+                      const text = generateShareText(activeShareInvoice);
+                      const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+                      window.open(url, '_blank');
+                    }}
+                    className="flex flex-col items-center gap-1 cursor-pointer group flex-1"
+                    title="مشاركة عبر واتساب"
+                  >
+                    <div className="w-10 h-10 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl flex items-center justify-center shadow-sm transition-all transform group-hover:scale-105 active:scale-95 mx-auto">
+                      <MessageCircle className="h-5 w-5 fill-current" />
+                    </div>
+                    <span className="text-[10px] font-bold text-slate-600">واتساب</span>
+                  </button>
+
+                  {/* Email Button */}
+                  <button
+                    onClick={() => {
+                      const text = generateShareText(activeShareInvoice);
+                      const subject = activeShareInvoice.type === 'sale' ? 'فاتورة مبيعات - بيبرس للمحاسبة' : 'فاتورة مشتريات - بيبرس للمحاسبة';
+                      const url = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text)}`;
+                      window.open(url, '_blank');
+                    }}
+                    className="flex flex-col items-center gap-1 cursor-pointer group flex-1"
+                    title="مشاركة عبر البريد"
+                  >
+                    <div className="w-10 h-10 bg-amber-500 hover:bg-amber-600 text-white rounded-xl flex items-center justify-center shadow-sm transition-all transform group-hover:scale-105 active:scale-95 mx-auto">
+                      <Mail className="h-5 w-5" />
+                    </div>
+                    <span className="text-[10px] font-bold text-slate-600">بريد إلكتروني</span>
+                  </button>
+
+                  {/* General system copy/share */}
+                  <button
+                    onClick={() => {
+                      const text = generateShareText(activeShareInvoice);
+                      if (navigator.share) {
+                        navigator.share({
+                          title: activeShareInvoice.type === 'sale' ? 'فاتورة مبيعات' : 'فاتورة مشتريات',
+                          text: text,
+                          url: 'https://almhaseb.vercel.app/'
+                        }).catch((err) => console.log('Error sharing:', err));
+                      } else {
+                        navigator.clipboard.writeText(text);
+                        alert('تم نسخ نص الفاتورة بالكامل! يمكنك الآن لصقه في أي تطبيق للدردشة.');
+                      }
+                    }}
+                    className="flex flex-col items-center gap-1 cursor-pointer group flex-1"
+                    title="نسخ النص بالكامل"
+                  >
+                    <div className="w-10 h-10 bg-teal-600 hover:bg-teal-700 text-white rounded-xl flex items-center justify-center shadow-sm transition-all transform group-hover:scale-105 active:scale-95 mx-auto">
+                      <Share2 className="h-5 w-5" />
+                    </div>
+                    <span className="text-[10px] font-bold text-slate-600">نسخ ومشاركة</span>
+                  </button>
+                </div>
               </div>
 
               {/* Checkbox "dont show again" */}
@@ -2167,12 +2338,12 @@ https://almhaseb.vercel.app/`;
                   }}
                   className="rounded border-slate-300 text-[#4b8c82] focus:ring-[#4b8c82] h-4 w-4"
                 />
-                <span className="text-[10px] font-black text-slate-500">عدم إظهار هذا المربع تلقائياً عند الحفظ</span>
+                <span className="text-[10px] font-bold text-slate-500">عدم إظهار هذا المربع تلقائياً عند الحفظ</span>
               </label>
             </div>
 
             {/* Close/Cancel Button */}
-            <div className="mt-5">
+            <div className="mt-4">
               <button
                 onClick={() => {
                   setIsShareModalOpen(false);
@@ -2180,9 +2351,166 @@ https://almhaseb.vercel.app/`;
                 }}
                 className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl text-xs font-black transition-all cursor-pointer"
               >
-                إلغاء
+                إغاء
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ==================== HIDDEN PRINTABLE INVOICE PDF CONTAINER ==================== */}
+      {activeShareInvoice && (
+        <div
+          id="printable-invoice-pdf-container"
+          style={{
+            position: 'fixed',
+            top: '-9999px',
+            left: '-9999px',
+            width: '794px', // perfect A4 pixel width at 96 DPI
+            backgroundColor: '#ffffff',
+            color: '#1e293b',
+            fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+            padding: '45px',
+            boxSizing: 'border-box',
+          }}
+          dir="rtl"
+        >
+          {/* Header */}
+          <div className="flex justify-between items-start border-b-2 border-teal-600/30 pb-6 mb-6">
+            <div>
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-[#4b8c82]/10 rounded-xl flex items-center justify-center text-[#4b8c82] font-black text-2xl">
+                  ب
+                </div>
+                <div>
+                  <h1 className="text-2xl font-black text-[#4b8c82]">بيبرس للمحاسبة</h1>
+                  <p className="text-[10px] font-bold text-slate-400">نظام إدارة الفواتير والمخازن الذكي</p>
+                </div>
+              </div>
+              <p className="text-xs font-semibold text-slate-500 mt-2">بريد إلكتروني: support@almhaseb.app</p>
+            </div>
+            
+            <div className="text-left">
+              <span className={`inline-block px-4 py-1.5 rounded-full text-xs font-black mb-3 ${
+                activeShareInvoice.type === 'sale' ? 'bg-[#4b8c82]/10 text-[#4b8c82]' : 'bg-amber-100 text-amber-800'
+              }`}>
+                {activeShareInvoice.type === 'sale' ? 'فاتورة مبيعات بضاعة' : 'فاتورة مشتريات بضاعة'}
+              </span>
+              <div className="text-xs font-bold text-slate-600 space-y-1">
+                <p>رقم الفاتورة: <span className="font-mono text-slate-800">{activeShareInvoice.invoiceNumber || activeShareInvoice.id?.slice(-6) || 'مسودة'}</span></p>
+                <p>تاريخ الإصدار: <span className="font-mono text-slate-800">
+                  {new Date(activeShareInvoice.date).toLocaleDateString('ar-YE', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
+                </span></p>
+              </div>
+            </div>
+          </div>
+
+          {/* Client Details */}
+          <div className="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-100 mb-6">
+            <div className="space-y-1.5 text-xs font-bold text-slate-600">
+              <p className="text-slate-400 text-[10px] uppercase font-black">بيانات العميل / الجهة المستفيدة</p>
+              <p className="text-slate-800 text-sm font-black">{activeShareInvoice.partyName || (activeShareInvoice.type === 'sale' ? 'عميل نقدي مباشر' : 'مورد نقدي مباشر')}</p>
+              <p>طريقة السداد: <span className="text-[#4b8c82]">
+                {(activeShareInvoice.cashPaid || 0) > 0 && (activeShareInvoice.creditAmount || 0) === 0 ? 'نقداً (كاش)' : (activeShareInvoice.creditAmount || 0) > 0 && (activeShareInvoice.cashPaid || 0) === 0 ? 'آجل (ذمم)' : 'سداد جزئي آجل'}
+              </span></p>
+            </div>
+            <div className="space-y-1.5 text-xs font-bold text-slate-600 text-left">
+              <p className="text-slate-400 text-[10px] uppercase font-black">جهة الإصدار</p>
+              <p className="text-slate-800 text-sm font-black">شركة بيبرس التجارية</p>
+              <p>حالة الفاتورة: <span className="text-emerald-600">نشطة ومعتمدة</span></p>
+            </div>
+          </div>
+
+          {/* Items Table */}
+          <table className="w-full text-right border-collapse mb-8">
+            <thead>
+              <tr className="bg-[#4b8c82] text-white text-xs font-black">
+                <th className="p-3 rounded-r-xl text-center w-12">#</th>
+                <th className="p-3">اسم السلعة / الخدمة</th>
+                <th className="p-3 text-center w-20">الكمية</th>
+                <th className="p-3 text-center w-28">السعر المفرد</th>
+                <th className="p-3 rounded-l-xl text-left w-32">الإجمالي الفرعي</th>
+              </tr>
+            </thead>
+            <tbody>
+              {activeShareInvoice.items && activeShareInvoice.items.length > 0 ? (
+                activeShareInvoice.items.map((it: any, index: number) => (
+                  <tr key={index} className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors">
+                    <td className="p-3 text-center font-mono font-bold text-xs text-slate-400">{index + 1}</td>
+                    <td className="p-3 font-black text-xs text-slate-800">{it.itemName}</td>
+                    <td className="p-3 text-center font-mono font-bold text-xs text-slate-700">{it.qty}</td>
+                    <td className="p-3 text-center font-mono font-bold text-xs text-slate-700">{formatCurrency(it.price)}</td>
+                    <td className="p-3 text-left font-mono font-black text-xs text-[#4b8c82]">{formatCurrency(it.price * it.qty)}</td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={5} className="p-6 text-center text-xs text-slate-400 font-bold">لا توجد أصناف في هذه الفاتورة.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+
+          {/* Totals Section */}
+          <div className="flex justify-between items-start gap-8">
+            {/* Notes & Signature */}
+            <div className="flex-1 text-right max-w-[280px]">
+              <h4 className="text-xs font-black text-slate-700 mb-1.5">ملاحظات وشروط الفاتورة:</h4>
+              <p className="text-[10px] text-slate-400 leading-relaxed font-bold">
+                {activeShareInvoice.details || 'لا توجد ملاحظات إضافية على هذه المعاملة المالية. البضاعة المباعة لا ترد ولا تستبدل بعد مرور ٣ أيام من تاريخ الشراء.'}
+              </p>
+              <div className="mt-8 border-t border-dashed border-slate-200 pt-3">
+                <p className="text-[9px] font-black text-slate-400">توقيع المسؤول / الختم الرسمي:</p>
+                <div className="h-12 w-24 mt-2 bg-slate-50/80 border border-slate-100 rounded-lg border-dashed"></div>
+              </div>
+            </div>
+
+            {/* Totals Box */}
+            <div className="w-64 bg-slate-50 rounded-2xl p-4 border border-slate-150 space-y-2.5">
+              <div className="flex justify-between items-center text-xs font-bold text-slate-600">
+                <span>المجموع الكلي للأصناف:</span>
+                <span className="font-mono text-slate-800">
+                  {formatCurrency(
+                    activeShareInvoice.items?.reduce((sum: number, it: any) => sum + (it.price * it.qty), 0) || activeShareInvoice.amount
+                  )}
+                </span>
+              </div>
+              
+              {activeShareInvoice.discount > 0 && (
+                <div className="flex justify-between items-center text-xs font-bold text-rose-600">
+                  <span>الخصم الممنوح (-):</span>
+                  <span className="font-mono">-{formatCurrency(activeShareInvoice.discount)}</span>
+                </div>
+              )}
+
+              <div className="border-t border-slate-200/60 my-2 pt-2 flex justify-between items-center">
+                <span className="text-xs font-black text-slate-800">الصافي المطلوب سداده:</span>
+                <span className="text-base font-black text-[#4b8c82] font-mono">{formatCurrency(activeShareInvoice.amount)}</span>
+              </div>
+
+              <div className="border-t border-slate-200/60 pt-2 space-y-1 text-[10px] font-bold text-slate-500">
+                <div className="flex justify-between">
+                  <span>المسدد نقداً (كاش):</span>
+                  <span className="font-mono text-slate-700">{formatCurrency(activeShareInvoice.cashPaid || 0)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>المتبقي آجل (ذمم):</span>
+                  <span className="font-mono text-rose-700">{formatCurrency(activeShareInvoice.creditAmount || 0)}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Footer branding */}
+          <div className="border-t border-slate-100 mt-10 pt-4 text-center">
+            <p className="text-[10px] font-black text-slate-400">تم إنشاء هذا السند إلكترونياً عبر تطبيق بيبرس للمحاسبة والمخازن</p>
+            <p className="text-[9px] text-[#4b8c82] font-bold mt-1">https://almhaseb.vercel.app</p>
           </div>
         </div>
       )}
