@@ -616,6 +616,14 @@ https://almhaseb.vercel.app/`;
     const backups: { element: HTMLElement; originalContent?: string; originalDisabled?: boolean }[] = [];
     const temporaryStyleTags: HTMLStyleElement[] = [];
 
+    // Helper to clean oklch/oklab color declarations that might have nested parentheses (e.g. var() references)
+    const cleanCssText = (css: string) => {
+      return css
+        .replace(/oklch\((?:[^()]+|\([^()]*\))*\)/gi, 'rgb(75, 140, 130)')
+        .replace(/oklab\((?:[^()]+|\([^()]*\))*\)/gi, 'rgb(75, 140, 130)')
+        .replace(/color-mix\((?:[^()]+|\([^()]*\))*\)/gi, 'rgb(75, 140, 130)');
+    };
+
     try {
       // 1. Clean <style> tags content of modern oklch/oklab colors
       for (const style of styleElements) {
@@ -623,11 +631,7 @@ https://almhaseb.vercel.app/`;
           element: style,
           originalContent: style.innerHTML
         });
-        let cssText = style.innerHTML;
-        // Replace oklch/oklab color declarations with standard colors so html2canvas doesn't crash
-        cssText = cssText.replace(/oklch\([^)]+\)/g, 'rgb(75, 140, 130)');
-        cssText = cssText.replace(/oklab\([^)]+\)/g, 'rgb(75, 140, 130)');
-        style.innerHTML = cssText;
+        style.innerHTML = cleanCssText(style.innerHTML);
       }
 
       // 2. Fetch and clean <link> stylesheet contents of oklch/oklab colors
@@ -641,8 +645,7 @@ https://almhaseb.vercel.app/`;
           const response = await fetch(linkEl.href);
           if (response.ok) {
             let cssText = await response.text();
-            cssText = cssText.replace(/oklch\([^)]+\)/g, 'rgb(75, 140, 130)');
-            cssText = cssText.replace(/oklab\([^)]+\)/g, 'rgb(75, 140, 130)');
+            cssText = cleanCssText(cssText);
             
             const tempStyle = document.createElement('style');
             tempStyle.className = 'html2canvas-temp-style';
