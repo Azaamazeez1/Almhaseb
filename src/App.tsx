@@ -911,6 +911,8 @@ export default function App() {
             customers={customers}
             suppliers={suppliers}
             transactions={transactions}
+            onAddTransaction={handleAddTransaction}
+            onUpdatePartyBalance={handleUpdatePartyBalance}
             onAddParty={(type, party) => {
               const newPartyId = `${type === 'customer' ? 'cust' : 'supp'}-${Date.now()}`;
               if (type === 'customer') {

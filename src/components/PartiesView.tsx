@@ -11,29 +11,42 @@ import {
   ArrowDownLeft,
   X,
   Printer,
-  Calendar
+  Calendar,
+  Coins,
+  CheckCircle2
 } from 'lucide-react';
 import { Customer, Supplier, Transaction } from '../types';
-import { formatCurrency } from '../utils';
+import { formatCurrency, getCurrencySymbol } from '../utils';
 
 interface PartiesViewProps {
   customers: Customer[];
   suppliers: Supplier[];
   transactions: Transaction[];
   onAddParty: (type: 'customer' | 'supplier', party: { name: string; phone: string }) => void;
+  onAddTransaction?: (tx: Transaction) => void;
+  onUpdatePartyBalance?: (type: 'customer' | 'supplier', partyId: string, diff: number) => void;
 }
 
 export default function PartiesView({
   customers,
   suppliers,
   transactions,
-  onAddParty
+  onAddParty,
+  onAddTransaction,
+  onUpdatePartyBalance
 }: PartiesViewProps) {
   const [activeSubTab, setActiveSubTab] = useState<'customers' | 'suppliers'>('customers');
   const [searchTerm, setSearchTerm] = useState('');
 
   // Selected party for account statement / ledger (كشف حساب تفصيلي)
   const [selectedPartyId, setSelectedPartyId] = useState<string | null>(null);
+
+  // Payment recording states
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [paymentAmount, setPaymentAmount] = useState<number>(0);
+  const [paymentDetails, setPaymentDetails] = useState('');
+  const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
+  const [paymentRef, setPaymentRef] = useState('');
 
   const filteredParties = useMemo(() => {
     const list = activeSubTab === 'customers' ? customers : suppliers;
@@ -52,6 +65,52 @@ export default function PartiesView({
       return suppliers.find((s) => s.id === selectedPartyId);
     }
   }, [selectedPartyId, activeSubTab, customers, suppliers]);
+
+  const openPaymentModal = () => {
+    const defaultRef = `VOU-${Math.floor(100000 + Math.random() * 900000)}`;
+    setPaymentRef(defaultRef);
+    setPaymentAmount(0);
+    setPaymentDate(new Date().toISOString().split('T')[0]);
+    if (selectedParty) {
+      setPaymentDetails(
+        activeSubTab === 'customers'
+          ? `دفعة مسددة من الحساب للعميل: ${selectedParty.name}`
+          : `دفعة مسددة للحساب للمورد: ${selectedParty.name}`
+      );
+    }
+    setIsPaymentModalOpen(true);
+  };
+
+  const handleSavePayment = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedParty || !paymentAmount || paymentAmount <= 0) return;
+    if (!onAddTransaction || !onUpdatePartyBalance) return;
+
+    const type = activeSubTab === 'customers' ? 'receipt_voucher' : 'payment_voucher';
+    const isReceipt = type === 'receipt_voucher';
+
+    const newTx: Transaction = {
+      id: `${type}-${Date.now()}`,
+      invoiceNumber: paymentRef,
+      date: new Date(paymentDate).toISOString(),
+      type: type,
+      partyId: selectedParty.id,
+      partyName: selectedParty.name,
+      amount: paymentAmount,
+      cashPaid: paymentAmount,
+      creditAmount: -paymentAmount,
+      details: paymentDetails || `${isReceipt ? 'سند قبض مالي' : 'سند صرف مالي'} برقم ${paymentRef}`
+    };
+
+    onUpdatePartyBalance(
+      isReceipt ? 'customer' : 'supplier',
+      selectedParty.id,
+      -paymentAmount
+    );
+
+    onAddTransaction(newTx);
+    setIsPaymentModalOpen(false);
+  };
 
   // Find all transactions associated with this party
   const partyTransactions = useMemo(() => {
@@ -174,7 +233,7 @@ export default function PartiesView({
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Parties List (Left 1/3) */}
-        <div className="bg-white rounded-3xl p-5 border border-slate-100 shadow-sm space-y-4 h-[650px] flex flex-col">
+        <div className={`bg-white rounded-3xl p-5 border border-slate-100 shadow-sm space-y-4 h-[650px] flex flex-col ${selectedPartyId ? 'hidden lg:flex' : 'flex'}`}>
           <div className="relative">
             <Search className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <input
@@ -239,7 +298,7 @@ export default function PartiesView({
         </div>
 
         {/* Detailed Account Statement / Ledger (Right 2/3) */}
-        <div className="lg:col-span-2 bg-white rounded-3xl p-6 border border-slate-100 shadow-sm min-h-[650px] flex flex-col justify-between">
+        <div className={`lg:col-span-2 bg-white rounded-3xl p-6 border border-slate-100 shadow-sm min-h-[650px] flex flex-col justify-between ${selectedPartyId ? 'flex' : 'hidden lg:flex'}`}>
           {selectedParty ? (
             <div className="space-y-6 flex-1 flex flex-col justify-between">
               {/* Ledger Header */}
@@ -260,21 +319,37 @@ export default function PartiesView({
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  {onAddTransaction && onUpdatePartyBalance && (
+                    <button
+                      id="add-ledger-payment-btn"
+                      onClick={openPaymentModal}
+                      className={`flex items-center gap-1.5 text-white text-xs font-black px-4 py-2.5 rounded-xl cursor-pointer shadow-md hover:scale-[1.02] active:scale-[0.98] transition-all ${
+                        activeSubTab === 'customers'
+                          ? 'bg-emerald-700 hover:bg-emerald-800'
+                          : 'bg-amber-600 hover:bg-amber-700'
+                      }`}
+                    >
+                      <Plus className="h-4 w-4" />
+                      <span>{activeSubTab === 'customers' ? 'استلام دفعة' : 'تسديد دفعة'}</span>
+                    </button>
+                  )}
                   <button
                     id="print-ledger-btn"
                     onClick={handlePrint}
                     className="flex items-center gap-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-semibold px-4 py-2.5 rounded-xl cursor-pointer transition-colors"
                   >
                     <Printer className="h-4 w-4" />
-                    <span>طباعة كشف الحساب</span>
+                    <span>طباعة</span>
                   </button>
                   <button
                     id="close-ledger-btn"
                     onClick={() => setSelectedPartyId(null)}
-                    className="p-2 text-gray-400 hover:text-slate-800 rounded-lg hover:bg-slate-50"
+                    className="flex items-center gap-1.5 bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 text-xs font-bold px-3 py-2.5 rounded-xl cursor-pointer transition-colors"
                   >
-                    <X className="h-5 w-5" />
+                    <X className="h-4 w-4" />
+                    <span className="lg:inline hidden">إغلاق الكشف</span>
+                    <span className="lg:hidden inline">رجوع</span>
                   </button>
                 </div>
               </div>
@@ -401,6 +476,131 @@ export default function PartiesView({
           )}
         </div>
       </div>
+
+      {/* Dynamic Payment Modal */}
+      {isPaymentModalOpen && selectedParty && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" dir="rtl">
+          <div className="max-w-md w-full bg-white rounded-3xl p-6 shadow-xl border border-slate-100 animate-in fade-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-4">
+              <div className="flex items-center gap-3">
+                <div className={`p-3 rounded-2xl ${activeSubTab === 'customers' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
+                  {activeSubTab === 'customers' ? <ArrowDownLeft className="h-6 w-6" /> : <ArrowUpRight className="h-6 w-6" />}
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-slate-800">
+                    {activeSubTab === 'customers' ? 'تسجيل سند قبض مالي (دفعة من عميل)' : 'تسجيل سند صرف مالي (دفعة لمورد)'}
+                  </h3>
+                  <p className="text-[10px] text-gray-400 mt-1">
+                    تسجيل دفعة سداد نقدية لخصمها مباشرة من رصيد الحساب الجاري.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsPaymentModalOpen(false)}
+                className="p-1.5 text-gray-400 hover:text-slate-800 rounded-lg hover:bg-slate-50 cursor-pointer"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Modal Form */}
+            <form onSubmit={handleSavePayment} className="space-y-4">
+              {/* Selected Party Info Box */}
+              <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100 text-xs space-y-1">
+                <div className="flex justify-between">
+                  <span className="text-gray-400">الحساب المحدد:</span>
+                  <span className="font-bold text-slate-800">{selectedParty.name}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">الرصيد الحالي:</span>
+                  <span className={`font-black ${selectedParty.balance > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
+                    {formatCurrency(selectedParty.balance, 'YER')}
+                  </span>
+                </div>
+              </div>
+
+              {/* Reference and Date */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] font-bold text-gray-500 mb-1">رقم السند/المرجع</label>
+                  <input
+                    type="text"
+                    required
+                    value={paymentRef}
+                    onChange={(e) => setPaymentRef(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-bold text-slate-700 focus:outline-none focus:border-emerald-600 focus:bg-white transition-all text-center"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-gray-500 mb-1">التاريخ والوقت</label>
+                  <input
+                    type="date"
+                    required
+                    value={paymentDate}
+                    onChange={(e) => setPaymentDate(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-600 focus:outline-none focus:border-emerald-600 focus:bg-white transition-all text-center"
+                  />
+                </div>
+              </div>
+
+              {/* Amount field */}
+              <div>
+                <label className="block text-[10px] font-bold text-gray-500 mb-1">مبلغ الدفعة المسددة ({getCurrencySymbol()})</label>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400">
+                    {getCurrencySymbol()}
+                  </span>
+                  <input
+                    type="number"
+                    required
+                    min="1"
+                    step="any"
+                    value={paymentAmount || ''}
+                    onChange={(e) => setPaymentAmount(parseFloat(e.target.value) || 0)}
+                    placeholder="0.00"
+                    className="w-full pl-12 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-mono text-sm font-black text-left focus:outline-none focus:border-emerald-600 focus:bg-white transition-all"
+                  />
+                </div>
+              </div>
+
+              {/* Statement details */}
+              <div>
+                <label className="block text-[10px] font-bold text-gray-500 mb-1">تفاصيل وبيان الحركة</label>
+                <input
+                  type="text"
+                  required
+                  value={paymentDetails}
+                  onChange={(e) => setPaymentDetails(e.target.value)}
+                  placeholder="بيان الحركة..."
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-emerald-600 focus:bg-white transition-all font-semibold"
+                />
+              </div>
+
+              {/* Action buttons */}
+              <div className="flex justify-end gap-2 border-t border-slate-100 pt-4 mt-4">
+                <button
+                  type="button"
+                  onClick={() => setIsPaymentModalOpen(false)}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                >
+                  إلغاء
+                </button>
+                <button
+                  type="submit"
+                  className={`px-4 py-2 text-white rounded-xl text-xs font-bold shadow-md transition-all cursor-pointer flex items-center gap-1.5 ${
+                    activeSubTab === 'customers' ? 'bg-emerald-700 hover:bg-emerald-800' : 'bg-amber-600 hover:bg-amber-700'
+                  }`}
+                >
+                  <CheckCircle2 className="h-4 w-4" />
+                  <span>ترحيل وحفظ الدفعة</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
