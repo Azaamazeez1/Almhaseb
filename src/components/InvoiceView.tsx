@@ -1192,11 +1192,25 @@ https://almhaseb.vercel.app/`;
                         <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[9px] text-slate-400 font-bold">%</span>
                         <input
                           type="number"
+                          step="any"
+                          min="0"
+                          max="100"
                           placeholder="خصم %"
                           value={discountPercentInputStr}
                           onChange={(e) => {
-                            const val = parseFloat(e.target.value);
-                            handleDiscountPercentChange(isNaN(val) ? 0 : val);
+                            const str = e.target.value;
+                            setDiscountPercentInputStr(str);
+                            const val = parseFloat(str);
+                            if (!isNaN(val)) {
+                              setFinalDiscountPercent(val);
+                              const amt = parseFloat(((val / 100) * subtotal).toFixed(2));
+                              setFinalDiscount(amt);
+                              setDiscountInputStr(amt === 0 ? '' : amt.toString());
+                            } else {
+                              setFinalDiscountPercent(0);
+                              setFinalDiscount(0);
+                              setDiscountInputStr('');
+                            }
                           }}
                           className="w-full pl-6 pr-2 py-1 bg-white border border-slate-200 rounded-lg text-xs font-mono font-bold text-center focus:outline-none"
                         />
@@ -1205,11 +1219,30 @@ https://almhaseb.vercel.app/`;
                         <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[9px] text-slate-400 font-bold">YER</span>
                         <input
                           type="number"
+                          step="any"
+                          min="0"
+                          max={subtotal}
                           placeholder="خصم كاش"
                           value={discountInputStr}
                           onChange={(e) => {
-                            const val = parseFloat(e.target.value);
-                            handleDiscountChange(isNaN(val) ? 0 : val);
+                            const str = e.target.value;
+                            setDiscountInputStr(str);
+                            const val = parseFloat(str);
+                            if (!isNaN(val)) {
+                              setFinalDiscount(val);
+                              if (subtotal > 0) {
+                                const pct = parseFloat(((val / subtotal) * 100).toFixed(2));
+                                setFinalDiscountPercent(pct);
+                                setDiscountPercentInputStr(pct === 0 ? '' : pct.toString());
+                              } else {
+                                setFinalDiscountPercent(0);
+                                setDiscountPercentInputStr('');
+                              }
+                            } else {
+                              setFinalDiscount(0);
+                              setFinalDiscountPercent(0);
+                              setDiscountPercentInputStr('');
+                            }
                           }}
                           className="w-full pl-8 pr-2 py-1 bg-white border border-slate-200 rounded-lg text-xs font-mono font-bold text-center focus:outline-none"
                         />
@@ -1225,11 +1258,25 @@ https://almhaseb.vercel.app/`;
                         <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[9px] text-slate-400 font-bold">%</span>
                         <input
                           type="number"
+                          step="any"
+                          min="0"
+                          max="100"
                           placeholder="الضريبة %"
                           value={taxPercentInputStr}
                           onChange={(e) => {
-                            const val = parseFloat(e.target.value);
-                            handleTaxPercentChange(isNaN(val) ? 0 : val);
+                            const str = e.target.value;
+                            setTaxPercentInputStr(str);
+                            const val = parseFloat(str);
+                            if (!isNaN(val)) {
+                              setFinalTaxPercent(val);
+                              const amt = parseFloat(((val / 100) * subtotal).toFixed(2));
+                              setFinalTax(amt);
+                              setTaxInputStr(amt === 0 ? '' : amt.toString());
+                            } else {
+                              setFinalTaxPercent(0);
+                              setFinalTax(0);
+                              setTaxInputStr('');
+                            }
                           }}
                           className="w-full pl-6 pr-2 py-1 bg-white border border-slate-200 rounded-lg text-xs font-mono font-bold text-center focus:outline-none"
                         />
