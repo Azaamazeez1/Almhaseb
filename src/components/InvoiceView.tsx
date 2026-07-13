@@ -611,13 +611,62 @@ https://almhaseb.vercel.app/`;
       return null;
     }
 
+    const styleElements = Array.from(document.querySelectorAll('style'));
+    const linkElements = Array.from(document.querySelectorAll('link[rel="stylesheet"]'));
+    const backups: { element: HTMLElement; originalContent?: string; originalDisabled?: boolean }[] = [];
+    const temporaryStyleTags: HTMLStyleElement[] = [];
+
     try {
+      // 1. Clean <style> tags content of modern oklch/oklab colors
+      for (const style of styleElements) {
+        backups.push({
+          element: style,
+          originalContent: style.innerHTML
+        });
+        let cssText = style.innerHTML;
+        // Replace oklch/oklab color declarations with standard colors so html2canvas doesn't crash
+        cssText = cssText.replace(/oklch\([^)]+\)/g, 'rgb(75, 140, 130)');
+        cssText = cssText.replace(/oklab\([^)]+\)/g, 'rgb(75, 140, 130)');
+        style.innerHTML = cssText;
+      }
+
+      // 2. Fetch and clean <link> stylesheet contents of oklch/oklab colors
+      for (const link of linkElements) {
+        const linkEl = link as HTMLLinkElement;
+        backups.push({
+          element: linkEl,
+          originalDisabled: linkEl.disabled
+        });
+        try {
+          const response = await fetch(linkEl.href);
+          if (response.ok) {
+            let cssText = await response.text();
+            cssText = cssText.replace(/oklch\([^)]+\)/g, 'rgb(75, 140, 130)');
+            cssText = cssText.replace(/oklab\([^)]+\)/g, 'rgb(75, 140, 130)');
+            
+            const tempStyle = document.createElement('style');
+            tempStyle.className = 'html2canvas-temp-style';
+            tempStyle.innerHTML = cssText;
+            document.head.appendChild(tempStyle);
+            temporaryStyleTags.push(tempStyle);
+            
+            linkEl.disabled = true;
+          }
+        } catch (e) {
+          console.error('Failed to rewrite link stylesheet:', e);
+        }
+      }
+
       const canvas = await html2canvas(element, {
         scale: 2,
         useCORS: true,
-        allowTaint: true,
+        allowTaint: false,
         logging: false,
-        backgroundColor: '#ffffff'
+        backgroundColor: '#ffffff',
+        width: 794,
+        windowWidth: 794,
+        scrollX: 0,
+        scrollY: 0
       });
 
       const imgData = canvas.toDataURL('image/png');
@@ -648,6 +697,19 @@ https://almhaseb.vercel.app/`;
     } catch (err) {
       console.error('Error in PDF generation:', err);
       return null;
+    } finally {
+      // 3. Restore all original styles and remove temporary elements
+      for (const backup of backups) {
+        if (backup.originalContent !== undefined) {
+          backup.element.innerHTML = backup.originalContent;
+        }
+        if (backup.originalDisabled !== undefined) {
+          (backup.element as HTMLLinkElement).disabled = backup.originalDisabled;
+        }
+      }
+      for (const tempStyle of temporaryStyleTags) {
+        tempStyle.remove();
+      }
     }
   };
 
@@ -2361,20 +2423,28 @@ https://almhaseb.vercel.app/`;
       {/* ==================== HIDDEN PRINTABLE INVOICE PDF CONTAINER ==================== */}
       {activeShareInvoice && (
         <div
-          id="printable-invoice-pdf-container"
           style={{
-            position: 'fixed',
-            top: '-9999px',
+            position: 'absolute',
+            width: '0',
+            height: '0',
+            overflow: 'hidden',
             left: '-9999px',
-            width: '794px', // perfect A4 pixel width at 96 DPI
-            backgroundColor: '#ffffff',
-            color: '#1e293b',
-            fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-            padding: '45px',
-            boxSizing: 'border-box',
+            top: '-9999px',
+            zIndex: -9999,
           }}
-          dir="rtl"
         >
+          <div
+            id="printable-invoice-pdf-container"
+            style={{
+              width: '794px', // perfect A4 pixel width at 96 DPI
+              backgroundColor: '#ffffff',
+              color: '#1e293b',
+              fontFamily: '"Cairo", system-ui, -apple-system, sans-serif',
+              padding: '45px',
+              boxSizing: 'border-box',
+            }}
+            dir="rtl"
+          >
           {/* Header */}
           <div className="flex justify-between items-start border-b-2 border-teal-600/30 pb-6 mb-6">
             <div>
@@ -2512,6 +2582,7 @@ https://almhaseb.vercel.app/`;
             <p className="text-[10px] font-black text-slate-400">تم إنشاء هذا السند إلكترونياً عبر تطبيق بيبرس للمحاسبة والمخازن</p>
             <p className="text-[9px] text-[#4b8c82] font-bold mt-1">https://almhaseb.vercel.app</p>
           </div>
+        </div>
         </div>
       )}
     </div>
