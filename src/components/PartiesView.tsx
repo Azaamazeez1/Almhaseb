@@ -13,7 +13,11 @@ import {
   Printer,
   Calendar,
   Coins,
-  CheckCircle2
+  CheckCircle2,
+  Share2,
+  Copy,
+  Check,
+  Send
 } from 'lucide-react';
 import { Customer, Supplier, Transaction } from '../types';
 import { formatCurrency, getCurrencySymbol } from '../utils';
@@ -47,6 +51,10 @@ export default function PartiesView({
   const [paymentDetails, setPaymentDetails] = useState('');
   const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
   const [paymentRef, setPaymentRef] = useState('');
+
+  // Share modal states
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
 
   const filteredParties = useMemo(() => {
     const list = activeSubTab === 'customers' ? customers : suppliers;
@@ -110,6 +118,82 @@ export default function PartiesView({
 
     onAddTransaction(newTx);
     setIsPaymentModalOpen(false);
+  };
+
+  const getShareText = () => {
+    if (!selectedParty) return '';
+    const isCustomer = activeSubTab === 'customers';
+    const typeLabel = isCustomer ? 'عميل' : 'مورد';
+    
+    let text = `*كشف حساب تفصيلي (${typeLabel})*\n`;
+    text += `*الاسم:* ${selectedParty.name}\n`;
+    if (selectedParty.phone) {
+      text += `*الهاتف:* ${selectedParty.phone}\n`;
+    }
+    text += `*الرصيد الحالي:* ${formatCurrency(selectedParty.balance, 'YER')}\n`;
+    text += `*تاريخ الكشف:* ${new Date().toLocaleDateString('ar-YE')}\n`;
+    text += `------------------------------------\n\n`;
+    
+    text += `*تفاصيل العمليات:*\n`;
+    
+    if (statementLedger.length === 0) {
+      text += `لا توجد حركات مالية مسجلة.\n`;
+    } else {
+      statementLedger.forEach((row) => {
+        const dateStr = new Date(row.date).toLocaleDateString('ar-YE', { month: 'numeric', day: 'numeric' });
+        const refStr = row.invoiceNumber || row.id.slice(0, 8);
+        const debit = row.debit > 0 ? formatCurrency(row.debit, 'YER') : '0';
+        const credit = row.credit > 0 ? formatCurrency(row.credit, 'YER') : '0';
+        const running = formatCurrency(row.runningBalance, 'YER');
+        
+        text += `📅 ${dateStr} | مستند: ${refStr}\n`;
+        text += `📝 ${row.details}\n`;
+        text += `➕ مدين (+): ${debit} | ➖ دائن (-): ${credit}\n`;
+        text += `⚖️ الرصيد: ${running}\n`;
+        text += `------------------------------------\n`;
+      });
+    }
+    
+    const totalDebit = statementLedger.reduce((sum, r) => sum + r.debit, 0);
+    const totalCredit = statementLedger.reduce((sum, r) => sum + r.credit, 0);
+    
+    text += `\n*ملخص كشف الحساب:*\n`;
+    text += `🔺 إجمالي مدين (مستحق لنا): ${formatCurrency(totalDebit, 'YER')}\n`;
+    text += `🟢 إجمالي دائن (مسدد): ${formatCurrency(totalCredit, 'YER')}\n`;
+    text += `💎 صافي الرصيد المستحق: *${formatCurrency(selectedParty.balance, 'YER')}*\n\n`;
+    text += `*تم تصديره عبر نظام بيبرس للمحاسبة*`;
+    
+    return text;
+  };
+
+  const handleCopyText = () => {
+    const text = getShareText();
+    navigator.clipboard.writeText(text).then(() => {
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000);
+    }).catch(err => {
+      console.error('Failed to copy: ', err);
+    });
+  };
+
+  const handleSystemShare = () => {
+    const text = getShareText();
+    if (navigator.share) {
+      navigator.share({
+        title: `كشف حساب - ${selectedParty?.name}`,
+        text: text
+      }).catch(err => {
+        console.error('Error sharing', err);
+      });
+    } else {
+      handleCopyText();
+    }
+  };
+
+  const handleWhatsAppShare = () => {
+    const text = getShareText();
+    const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+    window.open(url, '_blank');
   };
 
   // Find all transactions associated with this party
@@ -341,6 +425,14 @@ export default function PartiesView({
                   >
                     <Printer className="h-4 w-4" />
                     <span>طباعة</span>
+                  </button>
+                  <button
+                    id="share-ledger-btn"
+                    onClick={() => setIsShareModalOpen(true)}
+                    className="flex items-center gap-1.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 text-xs font-semibold px-4 py-2.5 rounded-xl cursor-pointer transition-colors"
+                  >
+                    <Share2 className="h-4 w-4" />
+                    <span>مشاركة</span>
                   </button>
                   <button
                     id="close-ledger-btn"
@@ -598,6 +690,96 @@ export default function PartiesView({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Dynamic Share Modal */}
+      {isShareModalOpen && selectedParty && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" dir="rtl">
+          <div className="max-w-lg w-full bg-white rounded-3xl p-6 shadow-xl border border-slate-100 animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-3 rounded-2xl bg-emerald-50 text-emerald-700">
+                  <Share2 className="h-6 w-6" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-slate-800">
+                    مشاركة كشف حساب: {selectedParty.name}
+                  </h3>
+                  <p className="text-[10px] text-gray-400 mt-1">
+                    يمكنك إرسال كشف الحساب التفصيلي عبر الواتساب أو نسخ النص المنسق لمشاركته في أي تطبيق آخر.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsShareModalOpen(false)}
+                className="p-1.5 text-gray-400 hover:text-slate-800 rounded-lg hover:bg-slate-50 cursor-pointer"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Preview Box */}
+            <div className="flex-1 overflow-y-auto mb-4 space-y-2">
+              <label className="block text-[10px] font-bold text-gray-500 mb-1">معاينة نص كشف الحساب:</label>
+              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 text-xs font-mono text-slate-700 whitespace-pre-wrap leading-relaxed max-h-[300px] overflow-y-auto select-all">
+                {getShareText()}
+              </div>
+            </div>
+
+            {/* Quick Actions Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4">
+              <button
+                type="button"
+                onClick={handleWhatsAppShare}
+                className="flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-xl text-xs font-bold shadow-md hover:scale-[1.01] active:scale-[0.99] transition-all cursor-pointer"
+              >
+                <Send className="h-4 w-4" />
+                <span>إرسال عبر الواتساب</span>
+              </button>
+              
+              <button
+                type="button"
+                onClick={handleCopyText}
+                className={`flex items-center justify-center gap-2 py-3 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                  isCopied
+                    ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                    : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-700'
+                }`}
+              >
+                {isCopied ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
+                <span>{isCopied ? 'تم نسخ النص المنسق!' : 'نسخ النص المنسق'}</span>
+              </button>
+            </div>
+
+            {/* System Share (Visible only if supported, or generic action) */}
+            <div className="border-t border-slate-100 pt-4 flex justify-between items-center">
+              {typeof navigator !== 'undefined' && navigator.share ? (
+                <button
+                  type="button"
+                  onClick={handleSystemShare}
+                  className="flex items-center gap-1.5 text-slate-600 hover:text-slate-950 text-xs font-bold bg-slate-100 hover:bg-slate-200 px-4 py-2.5 rounded-xl cursor-pointer transition-all"
+                >
+                  <Share2 className="h-4 w-4" />
+                  <span>مشاركة عبر تطبيقات الهاتف</span>
+                </button>
+              ) : (
+                <span className="text-[10px] text-gray-400">
+                  انقر على الأزرار أعلاه للمشاركة الفورية.
+                </span>
+              )}
+
+              <button
+                type="button"
+                onClick={() => setIsShareModalOpen(false)}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all cursor-pointer"
+              >
+                إغلاق النافذة
+              </button>
+            </div>
           </div>
         </div>
       )}
