@@ -49,12 +49,20 @@ export async function dbSaveUserAccount(user: UserAccount): Promise<boolean> {
       }, { onConflict: 'email' });
 
     if (error) {
-      console.error('Error saving user account to Supabase:', error);
+      if (isNetworkError(error)) {
+        console.warn('Network connection issue saving user account (Offline mode):', error.message);
+      } else {
+        console.error('Error saving user account to Supabase:', error);
+      }
       return false;
     }
     return true;
-  } catch (err) {
-    console.error('Failed to run dbSaveUserAccount:', err);
+  } catch (err: any) {
+    if (isNetworkError(err)) {
+      console.warn('Network connection issue in dbSaveUserAccount (Offline mode):', err.message || err);
+    } else {
+      console.error('Failed to run dbSaveUserAccount:', err);
+    }
     return false;
   }
 }
@@ -73,6 +81,9 @@ export async function dbGetUserAccount(email: string): Promise<UserAccount | nul
       .single();
 
     if (error || !data) {
+      if (error && isNetworkError(error)) {
+        console.warn('Network connection issue in dbGetUserAccount (Offline mode):', error.message);
+      }
       return null;
     }
 
@@ -83,8 +94,12 @@ export async function dbGetUserAccount(email: string): Promise<UserAccount | nul
       countryRegion: data.country_region,
       phone: data.phone || ''
     };
-  } catch (err) {
-    console.error('Failed to run dbGetUserAccount:', err);
+  } catch (err: any) {
+    if (isNetworkError(err)) {
+      console.warn('Network connection issue in dbGetUserAccount (Offline mode):', err.message || err);
+    } else {
+      console.error('Failed to run dbGetUserAccount:', err);
+    }
     return null;
   }
 }
@@ -102,7 +117,11 @@ export async function dbGetAllUserAccounts(): Promise<UserAccount[]> {
       .order('created_at', { ascending: false });
 
     if (error || !data) {
-      console.error('Error fetching all user accounts:', error);
+      if (error && isNetworkError(error)) {
+        console.warn('Network connection issue in dbGetAllUserAccounts (Offline mode):', error.message);
+      } else {
+        console.error('Error fetching all user accounts:', error);
+      }
       return [];
     }
 
@@ -113,8 +132,12 @@ export async function dbGetAllUserAccounts(): Promise<UserAccount[]> {
       countryRegion: row.country_region,
       phone: row.phone || ''
     }));
-  } catch (err) {
-    console.error('Failed to run dbGetAllUserAccounts:', err);
+  } catch (err: any) {
+    if (isNetworkError(err)) {
+      console.warn('Network connection issue in dbGetAllUserAccounts (Offline mode):', err.message || err);
+    } else {
+      console.error('Failed to run dbGetAllUserAccounts:', err);
+    }
     return [];
   }
 }
@@ -122,6 +145,35 @@ export async function dbGetAllUserAccounts(): Promise<UserAccount[]> {
 /**
  * Pushes entire local state up to Supabase for a specific user
  */
+function prefixId(id: string, userEmail: string): string {
+  if (!id) return id;
+  const prefix = `${userEmail}_`;
+  if (id.startsWith(prefix)) return id;
+  return `${prefix}${id}`;
+}
+
+function unprefixId(id: string, userEmail: string): string {
+  if (!id) return id;
+  const prefix = `${userEmail}_`;
+  if (id.startsWith(prefix)) {
+    return id.slice(prefix.length);
+  }
+  return id;
+}
+
+function isNetworkError(err: any): boolean {
+  if (!err) return false;
+  const msg = (err.message || String(err)).toLowerCase();
+  return (
+    msg.includes('failed to fetch') ||
+    msg.includes('networkerror') ||
+    msg.includes('network error') ||
+    msg.includes('aborted') ||
+    msg.includes('fetch') ||
+    err instanceof TypeError
+  );
+}
+
 export async function dbSyncUpAllData(
   email: string,
   items: Item[],
@@ -152,7 +204,7 @@ export async function dbSyncUpAllData(
       const uniqueItems = Array.from(uniqueItemsMap.values());
 
       const itemsToInsert = uniqueItems.map(item => ({
-        id: item.id,
+        id: prefixId(item.id, userEmail),
         user_email: userEmail,
         name: item.name,
         code: item.code || '',
@@ -175,7 +227,7 @@ export async function dbSyncUpAllData(
     customers.forEach(cust => {
       if (cust && cust.id) {
         uniquePartiesMap.set(cust.id, {
-          id: cust.id,
+          id: prefixId(cust.id, userEmail),
           user_email: userEmail,
           name: cust.name,
           type: 'customer',
@@ -190,7 +242,7 @@ export async function dbSyncUpAllData(
     suppliers.forEach(supp => {
       if (supp && supp.id) {
         uniquePartiesMap.set(supp.id, {
-          id: supp.id,
+          id: prefixId(supp.id, userEmail),
           user_email: userEmail,
           name: supp.name,
           type: 'supplier',
@@ -222,18 +274,21 @@ export async function dbSyncUpAllData(
       const uniqueTransactions = Array.from(uniqueTransactionsMap.values());
 
       const txsToInsert = uniqueTransactions.map(tx => ({
-        id: tx.id,
+        id: prefixId(tx.id, userEmail),
         user_email: userEmail,
         type: tx.type,
         invoice_number: tx.invoiceNumber || '',
         date: tx.date,
-        party_id: tx.partyId || null,
+        party_id: tx.partyId ? prefixId(tx.partyId, userEmail) : null,
         party_name: tx.partyName || '',
         amount: tx.amount,
         discount: tx.discount || 0,
         cash_paid: tx.cashPaid || 0,
         notes: tx.details || '', // Local uses details or notes? Check types.ts
-        items: tx.items || []
+        items: (tx.items || []).map(it => ({
+          ...it,
+          itemId: prefixId(it.itemId, userEmail)
+        }))
       }));
 
       const { error: txErr } = await supabase.from('transactions').insert(txsToInsert);
@@ -242,6 +297,13 @@ export async function dbSyncUpAllData(
 
     return { success: true, message: 'تمت مزامنة جميع البيانات السحابية بنجاح!' };
   } catch (err: any) {
+    if (isNetworkError(err)) {
+      console.warn('Network connection issue with Supabase (Offline mode):', err.message || err);
+      return {
+        success: false,
+        message: 'عذراً، تعذر الاتصال بـ Supabase لمزامنة البيانات (أنت تعمل في وضع أوفلاين/بدون اتصال حالياً). تم حفظ تغييراتك محلياً بشكل آمن وسنقوم بالمزامنة تلقائياً عند عودة الاتصال.'
+      };
+    }
     console.error('Error syncing up data to Supabase:', err);
     return { success: false, message: err.message || 'فشلت عملية المزامنة السحابية.' };
   }
@@ -276,7 +338,7 @@ export async function dbSyncDownAllData(email: string): Promise<{
     if (itemsErr) throw new Error(`Fetch items error: ${itemsErr.message}`);
 
     const items: Item[] = (dbItems || []).map(row => ({
-      id: row.id,
+      id: unprefixId(row.id, userEmail),
       code: row.code || '',
       name: row.name,
       stock: Number(row.quantity),
@@ -300,7 +362,7 @@ export async function dbSyncDownAllData(email: string): Promise<{
 
     (dbParties || []).forEach(row => {
       const party = {
-        id: row.id,
+        id: unprefixId(row.id, userEmail),
         name: row.name,
         phone: row.phone || '',
         balance: Number(row.balance)
@@ -322,18 +384,21 @@ export async function dbSyncDownAllData(email: string): Promise<{
     if (txsErr) throw new Error(`Fetch transactions error: ${txsErr.message}`);
 
     const transactions: Transaction[] = (dbTxs || []).map(row => ({
-      id: row.id,
+      id: unprefixId(row.id, userEmail),
       invoiceNumber: row.invoice_number || undefined,
       date: row.date,
       type: row.type as any,
-      partyId: row.party_id || undefined,
+      partyId: row.party_id ? unprefixId(row.party_id, userEmail) : undefined,
       partyName: row.party_name || undefined,
       amount: Number(row.amount),
       discount: Number(row.discount),
       cashPaid: Number(row.cash_paid),
       creditAmount: Number(row.amount) - Number(row.cash_paid) - Number(row.discount),
       details: row.notes || '',
-      items: row.items || []
+      items: (row.items || []).map((it: any) => ({
+        ...it,
+        itemId: it.itemId ? unprefixId(it.itemId, userEmail) : it.itemId
+      }))
     }));
 
     // Sort transactions by date ascending/descending depending on layout
@@ -345,6 +410,13 @@ export async function dbSyncDownAllData(email: string): Promise<{
       message: 'تم جلب البيانات السحابية بنجاح!'
     };
   } catch (err: any) {
+    if (isNetworkError(err)) {
+      console.warn('Network connection issue with Supabase (Offline mode):', err.message || err);
+      return {
+        success: false,
+        message: 'عذراً، تعذر الاتصال بـ Supabase لجلب البيانات (أنت تعمل في وضع أوفلاين/بدون اتصال حالياً). تم تحميل بياناتك المحلية المخزنة مسبقاً بنجاح.'
+      };
+    }
     console.error('Error syncing down data from Supabase:', err);
     return { success: false, message: err.message || 'فشلت عملية استيراد البيانات.' };
   }

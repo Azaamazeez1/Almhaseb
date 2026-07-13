@@ -489,10 +489,38 @@ export default function App() {
   };
 
   // --- Functions to update state ---
-  const handleAddTransaction = (newTx: Transaction) => {
+  const handleAddTransaction = (
+    newTx: Transaction,
+    partyBalanceChange?: { partyType: 'customer' | 'supplier'; partyId: string; amountChange: number }
+  ) => {
     const updatedTxs = [newTx, ...transactions];
     setTransactions(updatedTxs);
-    persistState(items, customers, suppliers, updatedTxs, config);
+
+    let updatedCustomers = [...customers];
+    let updatedSuppliers = [...suppliers];
+
+    if (partyBalanceChange) {
+      const { partyType, partyId, amountChange } = partyBalanceChange;
+      if (partyType === 'customer') {
+        updatedCustomers = customers.map((c) => {
+          if (c.id === partyId) {
+            return { ...c, balance: c.balance + amountChange };
+          }
+          return c;
+        });
+        setCustomers(updatedCustomers);
+      } else {
+        updatedSuppliers = suppliers.map((s) => {
+          if (s.id === partyId) {
+            return { ...s, balance: s.balance + amountChange };
+          }
+          return s;
+        });
+        setSuppliers(updatedSuppliers);
+      }
+    }
+
+    persistState(items, updatedCustomers, updatedSuppliers, updatedTxs, config);
   };
 
   const handleCompleteInvoiceSave = (

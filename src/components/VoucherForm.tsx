@@ -15,7 +15,10 @@ interface VoucherFormProps {
   type: 'receipt_voucher' | 'payment_voucher';
   customers: Customer[];
   suppliers: Supplier[];
-  onAddTransaction: (tx: Transaction) => void;
+  onAddTransaction: (
+    tx: Transaction,
+    partyBalanceChange?: { partyType: 'customer' | 'supplier'; partyId: string; amountChange: number }
+  ) => void;
   onUpdatePartyBalance: (partyType: 'customer' | 'supplier', partyId: string, amountChange: number) => void;
   onClose: () => void;
 }
@@ -62,17 +65,17 @@ export default function VoucherForm({
       details: details || `${isReceipt ? 'سند قبض مالي' : 'سند صرف مالي'} برقم ${voucherCode}`
     };
 
-    // If a customer is paying us (Receipt Voucher), we decrease their debit balance
-    // If we are paying a supplier (Payment Voucher), we decrease our credit balance to them
-    if (partyId) {
-      onUpdatePartyBalance(
-        isReceipt ? 'customer' : 'supplier',
-        partyId,
-        -amount // negative reduces balance
-      );
-    }
+    onAddTransaction(
+      newTx,
+      partyId
+        ? {
+            partyType: isReceipt ? 'customer' : 'supplier',
+            partyId: partyId,
+            amountChange: -amount
+          }
+        : undefined
+    );
 
-    onAddTransaction(newTx);
     alert(`تم تسجيل وحفظ ${isReceipt ? 'سند القبض' : 'سند الصرف'} بنجاح!`);
     onClose();
   };
